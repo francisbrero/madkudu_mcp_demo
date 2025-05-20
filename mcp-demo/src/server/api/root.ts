@@ -1,6 +1,7 @@
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { openaiRouter } from "~/server/api/routers/openai";
 import { madkuduRouter } from "~/server/api/routers/madkudu";
+import { agentRouter } from "~/server/api/routers/agent";
 
 /**
  * This is the primary router for your server.
@@ -10,6 +11,7 @@ import { madkuduRouter } from "~/server/api/routers/madkudu";
 export const appRouter = createTRPCRouter({
   openai: openaiRouter,
   madkudu: madkuduRouter,
+  agent: agentRouter,
 });
 
 // export type definition of API

@@ -25,6 +25,7 @@ This demo provides a side-by-side comparison between standard GPT-4o responses a
 - **Frontend**: React, Next.js, TailwindCSS
 - **API Integration**: tRPC for type-safe API calls
 - **AI Integration**: OpenAI API and MadKudu API
+- **Database**: Prisma ORM
 
 ## Development
 
@@ -41,11 +42,16 @@ This demo provides a side-by-side comparison between standard GPT-4o responses a
    pnpm install
    ```
 3. Configure environment variables in `.env`
-4. Start the development server:
+4. Set up the database:
+   ```
+   npx prisma generate
+   npx prisma db push
+   ```
+5. Start the development server:
    ```
    pnpm dev
    ```
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
+6. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## Contributing
 

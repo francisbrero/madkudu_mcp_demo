@@ -398,11 +398,80 @@ Verify that:
 * Plan content reflects insights from company and usage data
 * GPT-only agent produces more generic, less confident output
 
+---
+
+### 🧭 Task 8: Agent Builder & Deployment Interface
+
+**🔧 Objective**: Allow users (demo admins/devs) to define and manage "agents" by combining a custom system prompt with a list of allowed MadKudu API calls. These agents can then be deployed and made available on the home page for testing.
 
 ---
 
-Let me know if you'd like me to regenerate the PRD document with these revisions as a full Markdown file or if you're ready to define Agent 3.
+#### 🧱 Requirements
 
+* **Page Name**: `/agents` The page should be accessible from the homepage as a breadcrumb next to the API Test page.
+
+* **Fields per agent**:
+
+  * Agent Name (e.g. "Exec Outreach Agent")
+  * Description / Short Label
+  * System Prompt (textarea or markdown editor)
+  * Allowed API Calls (multi-select: checkboxes for `lookupAccount`, `lookupPerson`, etc.)
+  * Input Mode (email / domain / freeform)
+  * Output Format (Markdown, JSON, etc.)
+  * Status toggle: Active/Inactive
+
+* **Actions**:
+
+  * Save new agent
+  * Edit existing agent
+  * Deploy/undeploy agent (available on homepage)
+  * Duplicate or delete agent
+
+---
+
+#### 📁 Data Handling
+
+* Store agent definitions in a local JSON file or SQLite table:
+
+  ```ts
+  {
+    id: "agent_exec_outreach",
+    name: "Exec Outreach Agent",
+    description: "Writes tailored exec outreach emails",
+    prompt: "You are Francis Brero...",
+    allowedApis: ["lookupAccount", "lookupPerson", "getAIResearch"],
+    inputType: "email",
+    format: "markdown",
+    active: true
+  }
+  ```
+
+* These definitions are loaded dynamically into the Agent Selector on the home page.
+
+---
+
+#### 🎨 UI Notes
+
+* Use a layout similar to the API Test page for continuity
+* Prioritize form clarity (markdown editor with syntax highlight if feasible)
+* Consider collapsible agent panels if list grows
+
+---
+
+#### ✅ Build Check
+
+Run:
+
+```bash
+pnpm dev
+```
+
+* Ensure agents defined in `/agents` page are usable in the homepage selector
+* Test one agent with no API access vs. one using all APIs to validate logic
+* All agent configurations should be saved and reusable across reloads
+
+
+---
 
 ## 🧩 Completion Criteria
 

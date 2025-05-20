@@ -9,6 +9,18 @@ export const lookupPerson = async (email: string) => {
     console.log(`[MadKudu API] Looking up person with email: ${email}`);
     const { data } = await axios.post('https://madapi.madkudu.com/lookup/persons', { email }, { headers });
     console.log(`[MadKudu API] Person lookup successful for ${email}`);
+    
+    // Log a snippet of the response data
+    if (data && Array.isArray(data)) {
+      console.log(`[MadKudu API] Person data ${email}: ${data.length} records found.`);
+      if (data.length > 0) {
+        const cleanData = { ...data[0] };
+        console.log(`[MadKudu API] First person record: ${JSON.stringify(cleanData).substring(0, 200)}...`);
+      }
+    } else {
+      console.log(`[MadKudu API] Unexpected person data format: ${JSON.stringify(data).substring(0, 100)}...`);
+    }
+    
     return data;
   } catch (error) {
     console.error('Error looking up person:', error);
@@ -21,9 +33,21 @@ export const lookupAccount = async (domain: string) => {
     console.log(`[MadKudu API] Looking up account with domain: ${domain}`);
     const { data } = await axios.post('https://madapi.madkudu.com/lookup/accounts', { domain }, { headers });
     console.log(`[MadKudu API] Account lookup successful for ${domain}`);
+    
+    // Log a snippet of the response data
+    if (data && Array.isArray(data)) {
+      console.log(`[MadKudu API] Account data ${domain}: ${data.length} records found.`);
+      if (data.length > 0) {
+        const cleanData = { ...data[0] };
+        console.log(`[MadKudu API] First account record: ${JSON.stringify(cleanData).substring(0, 200)}...`);
+      }
+    } else {
+      console.log(`[MadKudu API] Unexpected account data format: ${JSON.stringify(data).substring(0, 100)}...`);
+    }
+    
     return data;
   } catch (error) {
-    console.error('Error looking up account:', error);
+    console.error(`[MadKudu API] Error looking up account for ${domain}:`, error);
     throw new Error(error instanceof AxiosError ? error.message : 'Unknown error');
   }
 };

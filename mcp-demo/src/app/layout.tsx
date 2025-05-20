@@ -31,6 +31,9 @@ export default function RootLayout({
                 <Link href="/" className="hover:text-blue-300 transition-colors">
                   Home
                 </Link>
+                <Link href="/agents" className="hover:text-blue-300 transition-colors">
+                  Agent Builder
+                </Link>
                 <Link href="/mcp-test" className="hover:text-blue-300 transition-colors">
                   API Test
                 </Link>

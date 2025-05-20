@@ -1,0 +1,32 @@
+[
+  {
+    "id": "executive-outreach",
+    "name": "Executive Outreach Writer",
+    "description": "Generate personalized executive outreach messages based on company data",
+    "prompt": "You are Francis Brero, CPO at MadKudu. You're preparing a first outreach to this executive. Use the research to identify and stack-rank angles for outreach, draft a 3-step email sequence, and suggest a LinkedIn connection message.",
+    "allowedApis": [
+      "lookupAccount",
+      "lookupPerson",
+      "getAIResearch",
+      "getContactDetails"
+    ],
+    "inputType": "email",
+    "format": "markdown",
+    "active": true
+  },
+  {
+    "id": "account-plan",
+    "name": "Account Plan Generator",
+    "description": "Create a tactical account plan for strategic sales targets with prioritized actions",
+    "prompt": "Create a comprehensive account plan based on the provided company information. Include an account objective summary, attack plan options, recommended path, target contacts, suggested messaging, and next steps.",
+    "allowedApis": [
+      "lookupAccount",
+      "getAccountDetails",
+      "getAIResearch",
+      "lookupPerson"
+    ],
+    "inputType": "domain",
+    "format": "markdown",
+    "active": true
+  }
+]

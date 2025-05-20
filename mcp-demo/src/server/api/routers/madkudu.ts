@@ -14,10 +14,80 @@ import {
   isEmail,
   isDomain,
 } from "~/lib/madkuduClient";
+import { PrismaClient } from "@prisma/client";
 
 const openai = new OpenAI({
   apiKey: env.OPENAI_API_KEY,
 });
+
+const prisma = new PrismaClient();
+
+// Terminal color codes for logging
+const colors = {
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
+  magenta: "\x1b[35m",
+  cyan: "\x1b[36m",
+  reset: "\x1b[0m",
+};
+
+// Function to log prompt in color
+const logPrompt = (prompt: string) => {
+  console.log(`${colors.magenta}[MadKudu Router] Enhanced Prompt:${colors.reset}`);
+  console.log(`${colors.cyan}${prompt}${colors.reset}`);
+};
+
+// Function to log API response
+const logApiResponse = (label: string, data: any) => {
+  console.log(`${colors.yellow}[MadKudu API Response] ${label}:${colors.reset}`);
+  console.log(`${colors.green}${JSON.stringify(data, null, 2).substring(0, 500)}...${colors.reset}`);
+};
+
+// Function to extract domain or company name from a user query
+const extractEntityFromQuery = (query: string): { type: 'domain' | 'email' | 'company' | 'unknown', value: string } => {
+  // Check if query contains an email
+  const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/;
+  const emailMatch = query.match(emailRegex);
+  if (emailMatch) {
+    return { type: 'email', value: emailMatch[0] };
+  }
+  
+  // Check if query contains a domain
+  const domainRegex = /\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]\b/gi;
+  const domainMatches = query.match(domainRegex);
+  if (domainMatches) {
+    // Filter out common words that might match domain pattern but aren't domains
+    const commonWordsThatLookLikeDomains = ['about.com', 'i.e.', 'e.g.'];
+    const filteredDomains = domainMatches.filter(domain => 
+      !commonWordsThatLookLikeDomains.includes(domain.toLowerCase()) &&
+      domain.includes('.') && 
+      domain.split('.').length >= 2 &&
+      domain.split('.')[1].length >= 2
+    );
+    
+    if (filteredDomains.length > 0) {
+      return { type: 'domain', value: filteredDomains[0] };
+    }
+  }
+  
+  // Check if query is about a company
+  const aboutCompanyRegex = /(?:about|information on|tell me about|info about|data on)\s+([A-Za-z0-9][A-Za-z0-9\s&_-]+)(?:\.com|\.ai|\.io|\.co|\.net)?/i;
+  const companyMatch = query.match(aboutCompanyRegex);
+  if (companyMatch && companyMatch[1]) {
+    return { type: 'company', value: companyMatch[1].trim() };
+  }
+  
+  // As a last resort, try to extract any word that might be a company name
+  const potentialCompanyRegex = /([A-Z][A-Za-z0-9]+(?:\s[A-Z][A-Za-z0-9]+)*)/;
+  const potentialCompanyMatch = query.match(potentialCompanyRegex);
+  if (potentialCompanyMatch && potentialCompanyMatch[1]) {
+    return { type: 'company', value: potentialCompanyMatch[1].trim() };
+  }
+  
+  return { type: 'unknown', value: query };
+};
 
 // Enhanced prompts with MadKudu enrichment
 const getEnhancedPromptForExecutiveOutreach = (enrichmentData: Record<string, string>) => {
@@ -274,6 +344,112 @@ export const madkuduRouter = createTRPCRouter({
       
       const extractedInfo: Record<string, any> = {};
 
+      // Function to handle company name lookup with domain variations
+      const enrichCompanyName = async (companyName: string) => {
+        console.log(`[MadKudu Router] Attempting to handle "${companyName}" as company name`);
+        
+        // Try common domain variations
+        const domainVariations = [
+          `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+          `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.ai`,
+          `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.io`,
+          `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.net`
+        ];
+        
+        let foundAccount = false;
+        
+        // Try each domain variation
+        for (const domain of domainVariations) {
+          try {
+            console.log(`[MadKudu Router] Trying domain variation: ${domain}`);
+            const accountData = await lookupAccount(domain);
+            
+            // Log the API response
+            logApiResponse(`Account lookup for ${domain}`, accountData);
+            
+            if (accountData && accountData.length > 0) {
+              console.log(`[MadKudu Router] Found account data for ${domain}`);
+              extractedInfo.companyContext = JSON.stringify(accountData[0], null, 2);
+              extractedInfo.companyName = accountData[0].name || companyName;
+              
+              // Try to fetch additional account details
+              if (accountData[0].id) {
+                try {
+                  console.log(`[MadKudu Router] Getting account details for ID: ${accountData[0].id}`);
+                  const accountDetails = await getAccountDetails(accountData[0].id);
+                  if (accountDetails) {
+                    extractedInfo.accountDetails = JSON.stringify(accountDetails, null, 2);
+                    console.log(`[MadKudu Router] Found additional account details`);
+                    logApiResponse(`Account details for ${domain}`, accountDetails);
+                  }
+                } catch (error) {
+                  console.error("Error getting account details:", error);
+                }
+              }
+              
+              // Get AI research
+              try {
+                console.log(`[MadKudu Router] Getting AI research for ${domain}`);
+                const researchText = await getAIResearchWithRetry(domain);
+                extractedInfo.researchContext = researchText;
+                console.log(`[MadKudu Router] Successfully retrieved AI research for ${domain}`);
+                logApiResponse(`AI Research for ${domain}`, { text: researchText.substring(0, 200) + "..." });
+              } catch (error) {
+                console.error("Error getting AI research:", error);
+                extractedInfo.researchContext = `
+### Key Facts about ${companyName}
+- Industry leader in their space
+- Offering innovative solutions
+- Key challenges and opportunities
+- Competitive positioning
+                `;
+                console.log(`[MadKudu Router] Using fallback research data for ${domain}`);
+              }
+              
+              foundAccount = true;
+              break;
+            }
+          } catch (error) {
+            console.error(`[MadKudu Router] Error looking up account for ${domain}:`, error);
+          }
+        }
+        
+        // If we couldn't find an account with domain variations, create a generic profile
+        if (!foundAccount) {
+          console.log(`[MadKudu Router] No account found for company name. Creating generic profile.`);
+          extractedInfo.companyName = companyName;
+          extractedInfo.companyContext = JSON.stringify({
+            "name": companyName,
+            "domain": domainVariations[0],
+            "industry": "Technology",
+            "employees_count": 500,
+            "customer_fit_score": 8,
+            "likelihood_to_buy_score": 7
+          }, null, 2);
+          
+          // Generate some basic research
+          try {
+            console.log(`[MadKudu Router] Getting AI research for ${companyName}`);
+            const researchText = await getAIResearchWithRetry(companyName);
+            extractedInfo.researchContext = researchText;
+            console.log(`[MadKudu Router] Successfully retrieved AI research for ${companyName}`);
+            logApiResponse(`AI Research for ${companyName}`, { text: researchText.substring(0, 200) + "..." });
+          } catch (error) {
+            console.error("Error getting AI research:", error);
+            extractedInfo.researchContext = `
+### Key Facts about ${companyName}
+- Industry leader in their space
+- Offering innovative solutions
+- Key challenges and opportunities
+- Competitive positioning
+            `;
+            console.log(`[MadKudu Router] Using fallback research data for ${companyName}`);
+          }
+        }
+        
+        return foundAccount;
+      };
+
       // Process the user input based on agent type
       if (input.agentId === "executive-outreach") {
         console.log(`[MadKudu Router] Processing for Executive Outreach agent`);
@@ -421,6 +597,102 @@ export const madkuduRouter = createTRPCRouter({
           }
         } else {
           console.log(`[MadKudu Router] Input not recognized as email or domain`);
+          
+          // Try to handle it as a company name
+          const possibleCompanyName = userInput.trim();
+          console.log(`[MadKudu Router] Attempting to handle "${possibleCompanyName}" as company name`);
+          
+          // Try common domain variations
+          const domainVariations = [
+            `${possibleCompanyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+            `${possibleCompanyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.ai`,
+            `${possibleCompanyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.io`
+          ];
+          
+          let foundAccount = false;
+          
+          // Try each domain variation
+          for (const domain of domainVariations) {
+            try {
+              console.log(`[MadKudu Router] Trying domain variation: ${domain}`);
+              const accountData = await lookupAccount(domain);
+              
+              if (accountData && accountData.length > 0) {
+                console.log(`[MadKudu Router] Found account data for ${domain}`);
+                extractedInfo.companyContext = JSON.stringify(accountData[0], null, 2);
+                extractedInfo.companyName = accountData[0].name || possibleCompanyName;
+                
+                // Try to fetch additional account details
+                if (accountData[0].id) {
+                  try {
+                    console.log(`[MadKudu Router] Getting account details for ID: ${accountData[0].id}`);
+                    const accountDetails = await getAccountDetails(accountData[0].id);
+                    if (accountDetails) {
+                      extractedInfo.accountDetails = JSON.stringify(accountDetails, null, 2);
+                      console.log(`[MadKudu Router] Found additional account details`);
+                    }
+                  } catch (error) {
+                    console.error("Error getting account details:", error);
+                  }
+                }
+                
+                // Get AI research
+                try {
+                  console.log(`[MadKudu Router] Getting AI research for ${domain}`);
+                  const researchText = await getAIResearchWithRetry(domain);
+                  extractedInfo.researchContext = researchText;
+                  console.log(`[MadKudu Router] Successfully retrieved AI research for ${domain}`);
+                } catch (error) {
+                  console.error("Error getting AI research:", error);
+                  extractedInfo.researchContext = `
+### Key Facts about ${possibleCompanyName}
+- Industry leader in their space
+- Offering innovative solutions
+- Key challenges and opportunities
+- Competitive positioning
+                  `;
+                  console.log(`[MadKudu Router] Using fallback research data for ${domain}`);
+                }
+                
+                foundAccount = true;
+                break;
+              }
+            } catch (error) {
+              console.error(`[MadKudu Router] Error looking up account for ${domain}:`, error);
+            }
+          }
+          
+          // If we couldn't find an account with domain variations, create a generic profile
+          if (!foundAccount) {
+            console.log(`[MadKudu Router] No account found for company name. Creating generic profile.`);
+            extractedInfo.companyName = possibleCompanyName;
+            extractedInfo.companyContext = JSON.stringify({
+              "name": possibleCompanyName,
+              "domain": domainVariations[0],
+              "industry": "Technology",
+              "employees_count": 500,
+              "customer_fit_score": 8,
+              "likelihood_to_buy_score": 7
+            }, null, 2);
+            
+            // Generate some basic research via API
+            try {
+              console.log(`[MadKudu Router] Getting AI research for ${possibleCompanyName}`);
+              const researchText = await getAIResearchWithRetry(possibleCompanyName);
+              extractedInfo.researchContext = researchText;
+              console.log(`[MadKudu Router] Successfully retrieved AI research for ${possibleCompanyName}`);
+            } catch (error) {
+              console.error("Error getting AI research:", error);
+              extractedInfo.researchContext = `
+### Key Facts about ${possibleCompanyName}
+- Industry leader in their space
+- Offering innovative solutions
+- Key challenges and opportunities
+- Competitive positioning
+              `;
+              console.log(`[MadKudu Router] Using fallback research data for ${possibleCompanyName}`);
+            }
+          }
         }
       } else if (input.agentId === "account-plan") {
         console.log(`[MadKudu Router] Processing for Account Plan agent`);
@@ -762,6 +1034,93 @@ Customer health score: 75/100
 NPS: 7 (from 5 in previous quarter)
           `;
         }
+      } else {
+        // Handle custom agents by trying company name approach
+        console.log(`[MadKudu Router] Processing for custom agent ${input.agentId}`);
+        
+        // Extract domain, email or company name from the user input
+        const extractionResult = extractEntityFromQuery(userInput);
+        console.log(`[MadKudu Router] Extracted entity: ${extractionResult.type} = "${extractionResult.value}"`);
+        
+        if (extractionResult.type === 'domain') {
+          // Handle domain
+          const domain = extractionResult.value.toLowerCase();
+          console.log(`[MadKudu Router] Processing domain: ${domain}`);
+          try {
+            const accountData = await lookupAccount(domain);
+            logApiResponse(`Account lookup for ${domain}`, accountData);
+            if (accountData && accountData.length > 0) {
+              console.log(`[MadKudu Router] Found account data for ${domain}`);
+              extractedInfo.companyContext = JSON.stringify(accountData[0], null, 2);
+              extractedInfo.companyName = accountData[0].name || domain;
+              
+              // Try to fetch additional account details if there's an accountId
+              if (accountData[0].id) {
+                try {
+                  console.log(`[MadKudu Router] Getting account details for ID: ${accountData[0].id}`);
+                  const accountDetails = await getAccountDetails(accountData[0].id);
+                  if (accountDetails) {
+                    extractedInfo.accountDetails = JSON.stringify(accountDetails, null, 2);
+                    console.log(`[MadKudu Router] Found additional account details`);
+                    logApiResponse(`Account details for ${domain}`, accountDetails);
+                  }
+                } catch (error) {
+                  console.error("Error getting account details:", error);
+                }
+              }
+              
+              // Get AI research
+              try {
+                console.log(`[MadKudu Router] Getting AI research for ${domain}`);
+                const researchText = await getAIResearchWithRetry(domain);
+                extractedInfo.researchContext = researchText;
+                console.log(`[MadKudu Router] Successfully retrieved AI research for ${domain}`);
+                logApiResponse(`AI Research for ${domain}`, { text: researchText.substring(0, 200) + "..." });
+              } catch (error) {
+                console.error("Error getting AI research:", error);
+                // Fallback to simulated data if the API fails
+                extractedInfo.researchContext = `
+### Key Facts about ${domain}
+- Industry leader in their space
+- Offering innovative solutions
+- Key challenges and opportunities
+- Competitive positioning`;
+                console.log(`[MadKudu Router] Using fallback research data for ${domain}`);
+              }
+            }
+          } catch (error) {
+            console.error(`[MadKudu Router] Error looking up account for ${domain}:`, error);
+          }
+        } else if (extractionResult.type === 'email') {
+          // Handle email input
+          const email = extractionResult.value;
+          console.log(`[MadKudu Router] Processing email: ${email}`);
+          try {
+            const personData = await lookupPerson(email);
+            logApiResponse(`Person lookup for ${email}`, personData);
+            
+            if (personData && personData.length > 0) {
+              extractedInfo.contactContext = JSON.stringify(personData[0], null, 2);
+              console.log(`[MadKudu Router] Found person data for ${email}`);
+              
+              // Extract domain and get account data
+              const domain = getDomainFromEmail(email);
+              if (domain) {
+                await enrichCompanyName(domain);
+              }
+            }
+          } catch (error) {
+            console.error(`[MadKudu Router] Error processing email ${extractionResult.value}:`, error);
+          }
+        } else if (extractionResult.type === 'company') {
+          // Process as company name
+          console.log(`[MadKudu Router] Processing company name: ${extractionResult.value}`);
+          await enrichCompanyName(extractionResult.value);
+        } else {
+          // Fallback for unknown types
+          console.log(`[MadKudu Router] Unable to extract entity, using raw input as company name`);
+          await enrichCompanyName(userInput);
+        }
       }
 
       console.log(`[MadKudu Router] Enrichment completed, found ${Object.keys(extractedInfo).length} data points`);
@@ -779,7 +1138,67 @@ NPS: 7 (from 5 in previous quarter)
           enhancedPrompt = getEnhancedPromptForAgent3(extractedInfo);
           break;
         default:
-          enhancedPrompt = "You are a helpful assistant with access to enriched data.";
+          // For custom agents, use the account plan format if we have company data
+          try {
+            // Fetch the custom agent's system prompt from the database
+            const customAgent = await prisma.agent.findUnique({
+              where: { id: input.agentId },
+            });
+            
+            if (customAgent && customAgent.systemPrompt) {
+              console.log(`[MadKudu Router] Found custom agent with ID ${input.agentId}, using its system prompt`);
+              
+              // If we have enrichment data, append it to the custom system prompt
+              if (Object.keys(extractedInfo).length > 0) {
+                // Format the enrichment data as a string to append to the system prompt
+                let enrichmentDataString = "\n\n## Company Context\n";
+                
+                if (extractedInfo.companyContext) {
+                  enrichmentDataString += extractedInfo.companyContext + "\n\n";
+                }
+                
+                if (extractedInfo.researchContext) {
+                  enrichmentDataString += "## AI-Generated Research\n" + extractedInfo.researchContext + "\n\n";
+                }
+                
+                if (extractedInfo.contactContext) {
+                  enrichmentDataString += "## Contact Context\n" + extractedInfo.contactContext + "\n\n";
+                }
+                
+                if (extractedInfo.usageContext) {
+                  enrichmentDataString += "## Usage Context\n" + extractedInfo.usageContext + "\n\n";
+                }
+                
+                // Combine the custom system prompt with the enrichment data
+                enhancedPrompt = customAgent.systemPrompt + enrichmentDataString;
+                console.log(`[MadKudu Router] Added enrichment data to custom agent system prompt`);
+              } else {
+                enhancedPrompt = customAgent.systemPrompt;
+              }
+            } else {
+              console.log(`[MadKudu Router] Custom agent not found or no system prompt, using default account plan format`);
+              // Fallback to account plan format if we have company data
+              if (Object.keys(extractedInfo).length > 0) {
+                console.log(`[MadKudu Router] Using account plan format for custom agent ${input.agentId}`);
+                enhancedPrompt = getEnhancedPromptForAccountPlan(extractedInfo);
+              } else {
+                enhancedPrompt = `You are a helpful assistant with access to enriched data. 
+                
+When asked about companies or organizations, try to provide relevant, factual information.`;
+              }
+            }
+          } catch (error: unknown) {
+            console.error(`[MadKudu Router] Error fetching custom agent:`, error instanceof Error ? error.message : String(error));
+            // Fallback to account plan format
+            if (Object.keys(extractedInfo).length > 0) {
+              console.log(`[MadKudu Router] Using account plan format for custom agent ${input.agentId}`);
+              enhancedPrompt = getEnhancedPromptForAccountPlan(extractedInfo);
+            } else {
+              enhancedPrompt = `You are a helpful assistant with access to enriched data. 
+              
+When asked about companies or organizations, try to provide relevant, factual information.`;
+            }
+          }
       }
 
       // Add system instruction to the beginning of the messages
@@ -789,6 +1208,9 @@ NPS: 7 (from 5 in previous quarter)
       ];
 
       console.log(`[MadKudu Router] Calling OpenAI API with enhanced prompt`);
+      
+      // Log the system prompt with color highlighting
+      logPrompt(enhancedPrompt);
       
       // Call OpenAI API
       const completion = await openai.chat.completions.create({
