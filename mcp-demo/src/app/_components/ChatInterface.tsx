@@ -55,13 +55,12 @@ export default function ChatInterface() {
   const [input, setInput] = useState("");
   const [leftMessages, setLeftMessages] = useState<Message[]>([]);
   const [rightMessages, setRightMessages] = useState<Message[]>([]);
-  const [leftAgent, setLeftAgent] = useState<Agent>(agents[0]);
-  const [rightAgent, setRightAgent] = useState<Agent>(agents[0]);
+  const [selectedAgent, setSelectedAgent] = useState<Agent>(agents[0]);
   const [leftLoading, setLeftLoading] = useState<LoadingState>({ isLoading: false });
   const [rightLoading, setRightLoading] = useState<LoadingState>({ isLoading: false });
   const [streamingMessage, setStreamingMessage] = useState("");
   const [enrichmentData, setEnrichmentData] = useState<Record<string, unknown>>({});
-  const [showEnrichmentData, setShowEnrichmentData] = useState(true);
+  const showEnrichmentData = true;
   
   const openaiMutation = api.openai.chat.useMutation();
   const madkuduMutation = api.madkudu.enhancedChat.useMutation();
@@ -89,15 +88,10 @@ export default function ChatInterface() {
     };
   };
 
-  // Reset left chat history when agent changes
-  const handleLeftAgentChange = (agent: Agent) => {
-    setLeftAgent(agent);
+  // Handle agent change for both panels
+  const handleAgentChange = (agent: Agent) => {
+    setSelectedAgent(agent);
     setLeftMessages([]);
-  };
-
-  // Reset right chat history when agent changes
-  const handleRightAgentChange = (agent: Agent) => {
-    setRightAgent(agent);
     setRightMessages([]);
     setEnrichmentData({});
   };
@@ -146,12 +140,12 @@ export default function ChatInterface() {
               role, 
               content,
             })),
-            agentId: leftAgent.id,
+            agentId: selectedAgent.id,
           },
           {
             onSuccess: (data) => {
               // Simulate streaming of the response
-              const cleanupStreaming = simulateStreaming(data.content, () => {
+              const cleanupStreaming = simulateStreaming(data.content ?? "", () => {
                 setLeftLoading({ isLoading: false });
               });
               
@@ -192,7 +186,7 @@ export default function ChatInterface() {
                   role,
                   content,
                 })),
-                agentId: rightAgent.id,
+                agentId: selectedAgent.id,
               },
               {
                 onSuccess: (data) => {
@@ -200,7 +194,7 @@ export default function ChatInterface() {
                     ...prev,
                     {
                       role: "assistant",
-                      content: data.content,
+                      content: data.content ?? "",
                     },
                   ]);
                   if (data.enrichmentData) {
@@ -292,86 +286,76 @@ export default function ChatInterface() {
   }, [streamingMessage]);
 
   return (
-    <div className="flex w-full h-[calc(100vh-10rem)] gap-4 p-4">
-      {/* Left Panel - GPT-4o only */}
-      <div className="flex flex-col w-1/2 h-full border border-purple-700 rounded-lg overflow-hidden">
-        <div className="p-2 border-b border-purple-700 bg-purple-900">
-          <AgentSelector
-            agents={agents}
-            selectedAgent={leftAgent}
-            onSelectAgent={handleLeftAgentChange}
-            label="GPT-4o Only (Streaming)"
-          />
-        </div>
-        <div className="bg-purple-900/50 px-3 py-1.5 border-b border-purple-700 text-sm flex items-center justify-between">
-          <div className="flex items-center">
-            <div className={`h-2 w-2 rounded-full mr-2 ${leftLoading.isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
-            <span>Active Agent: <span className="font-semibold">{leftAgent.name}</span></span>
-          </div>
-          {leftLoading.isLoading && (
-            <div className="text-xs font-medium text-yellow-300">{leftLoading.step}</div>
-          )}
-        </div>
-        <ChatPanel messages={leftMessages} loadingState={leftLoading} />
+    <div className="flex flex-col h-[calc(100vh-10rem)]">
+      {/* Agent Selector moved to top */}
+      <div className="mb-4">
+        <AgentSelector
+          agents={agents}
+          selectedAgent={selectedAgent}
+          onSelectAgent={handleAgentChange}
+          label="Select Agent"
+        />
       </div>
-
-      {/* Right Panel - GPT-4o + MadKudu */}
-      <div className="flex flex-col w-1/2 h-full border border-purple-700 rounded-lg overflow-hidden">
-        <div className="p-2 border-b border-purple-700 bg-purple-900 flex justify-between items-center">
-          <AgentSelector
-            agents={agents}
-            selectedAgent={rightAgent}
-            onSelectAgent={handleRightAgentChange}
-            label="GPT-4o + MadKudu API"
-          />
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center">
-              <label htmlFor="show-enrichment" className="mr-2 text-xs text-white">
-                Show Enrichment
-              </label>
-              <input
-                id="show-enrichment"
-                type="checkbox"
-                checked={showEnrichmentData}
-                onChange={() => {
-                  console.log("[Show Enrichment] Toggling from", showEnrichmentData, "to", !showEnrichmentData);
-                  setShowEnrichmentData(!showEnrichmentData);
-                }}
-                className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-              />
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+        {/* Left Panel (GPT-4o Only) */}
+        <div className="flex flex-col bg-[rgba(var(--color-surface),0.7)] rounded-lg overflow-hidden shadow-lg border border-gray-700">
+          <div className="px-3 py-2 bg-[rgba(var(--color-primary),0.05)] border-b border-gray-700">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-sm">GPT-4o Only (Streaming)</span>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                <span className="text-sm">Active Agent: {selectedAgent.name}</span>
+              </div>
             </div>
           </div>
+          
+          <ChatPanel
+            messages={leftMessages}
+            loadingState={leftLoading}
+          />
         </div>
-        <div className="bg-purple-900/50 px-3 py-1.5 border-b border-purple-700 text-sm flex items-center justify-between">
-          <div className="flex items-center">
-            <div className={`h-2 w-2 rounded-full mr-2 ${rightLoading.isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
-            <span>Active Agent: <span className="font-semibold">{rightAgent.name}</span></span>
+        
+        {/* Right Panel (GPT-4o + MadKudu API) */}
+        <div className="flex flex-col bg-[rgba(var(--color-surface),0.7)] rounded-lg overflow-hidden shadow-lg border border-gray-700">
+          <div className="px-3 py-2 bg-[rgba(var(--color-primary),0.05)] border-b border-gray-700">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-sm">GPT-4o + MadKudu API</span>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                <span className="text-sm">Active Agent: {selectedAgent.name}</span>
+              </div>
+            </div>
           </div>
-          {rightLoading.isLoading && (
-            <div className="text-xs font-medium text-yellow-300">{rightLoading.step}</div>
-          )}
+          
+          <ChatPanel
+            messages={rightMessages}
+            enrichmentData={enrichmentData}
+            showEnrichment={showEnrichmentData}
+            loadingState={rightLoading}
+          />
         </div>
-        {rightLoading.isLoading && (
-          <div className="px-4 pt-3">
-            <EnrichmentProgress loadingState={rightLoading} />
-          </div>
-        )}
-        <ChatPanel 
-          messages={rightMessages} 
-          enrichmentData={enrichmentData} 
-          showEnrichment={showEnrichmentData}
-          loadingState={rightLoading}
-        />
       </div>
-
-      {/* Shared Input Bar */}
-      <div className="fixed bottom-4 left-0 right-0 mx-auto w-[calc(100%-2rem)] max-w-7xl">
-        <ChatInput
-          value={input}
-          onChange={setInput}
-          onSubmit={handleSubmit}
-          disabled={leftLoading.isLoading || rightLoading.isLoading}
-        />
+      
+      {/* Chat Input */}
+      <div className="mt-6 bg-[rgba(var(--color-surface),0.7)] rounded-lg p-3 shadow-lg border border-gray-700">
+        <form onSubmit={handleSubmit} className="flex items-center">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your message here..."
+            className="flex-1 px-4 py-3 bg-[rgb(var(--color-background))] text-white rounded-l-md border border-gray-700 focus:outline-none focus:border-[rgb(var(--color-primary))]"
+            disabled={leftLoading.isLoading || rightLoading.isLoading}
+          />
+          <button
+            type="submit"
+            className="bg-[rgb(var(--color-primary))] text-white px-6 py-3 rounded-r-md font-medium hover:bg-[rgb(var(--color-primary-dark))] transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={leftLoading.isLoading || rightLoading.isLoading}
+          >
+            Send
+          </button>
+        </form>
       </div>
     </div>
   );

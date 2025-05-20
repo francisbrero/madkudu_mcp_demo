@@ -1,6 +1,28 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+@layer base {
+  :root {
+    --color-primary: 108, 99, 255; /* MadKudu purple #6C63FF */
+    --color-primary-dark: 93, 85, 224;
+    --color-secondary: 79, 70, 229; /* Indigo shade */
+    --color-background: 15, 23, 42; /* Dark slate for dark mode */
+    --color-surface: 30, 41, 59; /* Slate for panels */
+    --color-text: 255, 255, 255;
+  }
+}
+
+@layer components {
+  .bg-madkudu-gradient {
+    background: linear-gradient(to bottom, rgb(var(--color-background)), rgb(21, 22, 44));
+  }
+  
+  .bg-panel {
+    background: rgb(var(--color-surface));
+    border-radius: 0.5rem;
+  }
 }

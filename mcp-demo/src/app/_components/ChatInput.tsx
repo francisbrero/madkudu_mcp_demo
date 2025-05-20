@@ -1,12 +1,13 @@
 "use client";
 
-import { ChangeEvent, FormEvent, Dispatch, SetStateAction } from "react";
+import { useState, useEffect, KeyboardEvent, FormEvent } from "react";
 
 type ChatInputProps = {
   value: string;
-  onChange: Dispatch<SetStateAction<string>>;
+  onChange: (value: string) => void;
   onSubmit: (e: FormEvent) => void;
   disabled: boolean;
+  placeholder?: string;
 };
 
 export default function ChatInput({
@@ -14,62 +15,33 @@ export default function ChatInput({
   onChange,
   onSubmit,
   disabled,
+  placeholder = "Type your message here...",
 }: ChatInputProps) {
-  const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      const form = e.currentTarget.form;
+      if (form) form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+    }
   };
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="flex bg-gray-800 rounded-lg border border-purple-700 p-2"
-    >
-      <textarea
+    <form onSubmit={onSubmit} className="flex rounded-md shadow-lg overflow-hidden bg-[rgba(var(--color-surface),0.8)] border border-gray-700">
+      <input
+        type="text"
         value={value}
-        onChange={handleChange}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
         disabled={disabled}
-        placeholder="Type your message here..."
-        className="flex-grow bg-transparent text-white p-2 outline-none resize-none h-12 max-h-32"
-        rows={1}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            onSubmit(e);
-          }
-        }}
+        className="flex-1 px-4 py-3 bg-[rgb(var(--color-background))] text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
       />
       <button
         type="submit"
-        disabled={disabled}
-        className="px-4 py-2 bg-purple-700 text-white rounded ml-2 hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={disabled || !value.trim()}
+        className="bg-[rgb(var(--color-primary))] text-white px-6 py-3 font-medium hover:bg-[rgb(var(--color-primary-dark))] transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {disabled ? (
-          <span className="flex items-center">
-            <svg
-              className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            Processing
-          </span>
-        ) : (
-          "Send"
-        )}
+        Send
       </button>
     </form>
   );

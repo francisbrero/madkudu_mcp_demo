@@ -36,7 +36,7 @@ export default function ChatPanel({
   }, [messages]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 bg-purple-950">
+    <div className="flex-1 overflow-y-auto p-4 bg-panel">
       {messages.length === 0 ? (
         <div className="flex h-full items-center justify-center text-gray-400">
           <p>Start a conversation by typing a message below.</p>
@@ -53,8 +53,8 @@ export default function ChatPanel({
               <div
                 className={`max-w-[80%] rounded-lg p-3 ${
                   message.role === "user"
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-700 text-white"
+                    ? "bg-[rgb(var(--color-primary))] text-white"
+                    : "bg-[rgb(var(--color-surface))] border border-gray-700 text-white"
                 }`}
               >
                 <div className="prose prose-invert prose-sm max-w-none">
@@ -73,11 +73,7 @@ export default function ChatPanel({
           
           {/* Show enrichment data if available and enabled */}
           {showEnrichment && Object.keys(enrichmentData).length > 0 && (
-            <div>
-              {console.log("[ChatPanel] Rendering EnrichmentDataDisplay with:", { 
-                keys: Object.keys(enrichmentData),
-                showEnrichment 
-              })}
+            <div className="mt-4 mb-2">
               <EnrichmentDataDisplay enrichmentData={enrichmentData} />
             </div>
           )}
