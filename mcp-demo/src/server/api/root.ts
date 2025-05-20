@@ -1,4 +1,6 @@
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
+import { openaiRouter } from "~/server/api/routers/openai";
+import { madkuduRouter } from "~/server/api/routers/madkudu";
 
 /**
  * This is the primary router for your server.
@@ -6,7 +8,8 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
-  // Add your routers here
+  openai: openaiRouter,
+  madkudu: madkuduRouter,
 });
 
 // export type definition of API

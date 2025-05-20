@@ -7,6 +7,8 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
+    MADKUDU_API_KEY: z.string().min(1),
+    OPENAI_API_KEY: z.string().min(1),
     NODE_ENV: z.enum(["development", "test", "production"]),
   },
 
@@ -16,7 +18,7 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    // NEXT_PUBLIC_CLIENTVAR: z.string().min(1),
   },
 
   /**
@@ -24,6 +26,8 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
+    MADKUDU_API_KEY: process.env.MADKUDU_API_KEY,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     NODE_ENV: process.env.NODE_ENV,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
