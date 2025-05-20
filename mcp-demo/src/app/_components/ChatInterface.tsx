@@ -21,17 +21,17 @@ const agents: Agent[] = [
   {
     id: "executive-outreach",
     name: "Executive Outreach Writer",
-    description: "Generate personalized executive outreach messages",
+    description: "Generate personalized executive outreach messages based on company data",
   },
   {
     id: "account-plan",
     name: "Account Plan Generator",
-    description: "Generate a tactical account plan for a strategic sales target",
+    description: "Create a tactical account plan for strategic sales targets with prioritized actions",
   },
   {
     id: "agent3",
-    name: "Agent 3",
-    description: "TBD",
+    name: "QBR Manager",
+    description: "Prepare for a Quarterly Business Review with usage analytics and growth opportunities",
   },
 ];
 
@@ -51,6 +51,19 @@ export default function ChatInterface() {
   
   // Get the subscription client
   const streamChat = api.openai.streamChat.useSubscription;
+
+  // Reset left chat history when agent changes
+  const handleLeftAgentChange = (agent: Agent) => {
+    setLeftAgent(agent);
+    setLeftMessages([]);
+  };
+
+  // Reset right chat history when agent changes
+  const handleRightAgentChange = (agent: Agent) => {
+    setRightAgent(agent);
+    setRightMessages([]);
+    setEnrichmentData({});
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,9 +191,13 @@ export default function ChatInterface() {
           <AgentSelector
             agents={agents}
             selectedAgent={leftAgent}
-            onSelectAgent={setLeftAgent}
+            onSelectAgent={handleLeftAgentChange}
             label="GPT-4o Only"
           />
+        </div>
+        <div className="bg-purple-900/50 px-3 py-1.5 border-b border-purple-700 text-sm flex items-center">
+          <div className="bg-green-400 h-2 w-2 rounded-full mr-2"></div>
+          <span>Active Agent: <span className="font-semibold">{leftAgent.name}</span></span>
         </div>
         <ChatPanel messages={leftMessages} />
       </div>
@@ -191,7 +208,7 @@ export default function ChatInterface() {
           <AgentSelector
             agents={agents}
             selectedAgent={rightAgent}
-            onSelectAgent={setRightAgent}
+            onSelectAgent={handleRightAgentChange}
             label="GPT-4o + MadKudu API"
           />
           <div className="flex items-center">
@@ -206,6 +223,10 @@ export default function ChatInterface() {
               className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
             />
           </div>
+        </div>
+        <div className="bg-purple-900/50 px-3 py-1.5 border-b border-purple-700 text-sm flex items-center">
+          <div className="bg-green-400 h-2 w-2 rounded-full mr-2"></div>
+          <span>Active Agent: <span className="font-semibold">{rightAgent.name}</span></span>
         </div>
         <ChatPanel 
           messages={rightMessages} 

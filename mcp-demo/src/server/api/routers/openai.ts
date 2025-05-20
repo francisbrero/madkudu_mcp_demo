@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { env } from "~/env";
 import OpenAI from "openai";
+import { observable } from "@trpc/server/observable";
 
 const openai = new OpenAI({
   apiKey: env.OPENAI_API_KEY,
@@ -51,7 +52,35 @@ const agentInstructionsMap = {
   Be tactical, collaborative, and actionable. No generic fluff or marketing language.
   Make bold, specific recommendations based on available information.`,
 
-  "agent3": `You are Agent 3. This is a placeholder prompt.`
+  "agent3": `You are a MadKudu Customer Success Manager preparing for a strategic QBR with a key account.
+  Use the information provided by the user to:
+  
+  1. Identify the client's current state and goals
+  2. Analyze their usage patterns and highlight areas for improvement
+  3. Create a plan to expand adoption and drive additional business value
+  
+  Your response should be in Markdown format with these sections:
+  
+  # QBR Plan for [Company Name]
+  
+  ## 1. Account Health Summary
+  [Overall assessment of the account's health and usage]
+  
+  ## 2. Key Metrics
+  - Usage trends
+  - Value realized to date
+  - Areas for improvement
+  
+  ## 3. Success Stories
+  [1-2 specific examples of how they've used MadKudu successfully]
+  
+  ## 4. Growth Opportunities
+  [3 specific opportunities to expand usage or adoption]
+  
+  ## 5. Action Plan
+  [Concrete steps for the next 90 days]
+  
+  Be direct, data-focused, and business-oriented. Focus on tangible outcomes and ROI.`
 };
 
 export const openaiRouter = createTRPCRouter({
@@ -87,5 +116,70 @@ export const openaiRouter = createTRPCRouter({
       return {
         content: completion.choices[0]?.message.content || "No response",
       };
+    }),
+
+  streamChat: publicProcedure
+    .input(
+      z.object({
+        messages: z.array(
+          z.object({
+            role: z.enum(["user", "assistant", "system"]),
+            content: z.string(),
+          })
+        ),
+        agentId: z.string(),
+      })
+    )
+    .subscription(async ({ input }) => {
+      // Get the agent-specific system instruction
+      const systemInstruction = agentInstructionsMap[input.agentId as keyof typeof agentInstructionsMap] || 
+        "You are a helpful assistant.";
+      
+      // Add system instruction to the beginning of the messages
+      const messagesWithSystem = [
+        { role: "system", content: systemInstruction },
+        ...input.messages,
+      ];
+
+      return observable<{ delta: string; done: boolean }>((observer) => {
+        const run = async () => {
+          try {
+            const stream = await openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: messagesWithSystem,
+              stream: true,
+            });
+
+            let fullResponse = '';
+            
+            for await (const chunk of stream) {
+              const content = chunk.choices[0]?.delta?.content || '';
+              fullResponse += content;
+              observer.next({ 
+                delta: content,
+                done: false
+              });
+            }
+
+            observer.next({ 
+              delta: '',
+              done: true 
+            });
+            observer.complete();
+          } catch (error) {
+            console.error('OpenAI stream error:', error);
+            observer.error(error);
+          }
+        };
+
+        run().catch((error) => {
+          console.error("Error in streaming:", error);
+          observer.error(error);
+        });
+
+        return () => {
+          // Cleanup function if needed
+        };
+      });
     }),
 }); 
