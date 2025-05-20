@@ -1,6 +1,7 @@
 # MadKudu MCP Demo
 
-A demonstration of MadKudu's Multi-Channel Platform (MCP) capabilities, showcasing how enrichment data enhances AI agent performance.
+A demonstration of MadKudu's Model Context Protocol (MCP) capabilities, showcasing how enrichment data enhances AI agent performance.
+<img width="1511" alt="MadKudu_MCP_Demo" src="https://github.com/user-attachments/assets/71e7d1f7-29a4-499a-997e-6fb7e69adee1" />
 
 ## Overview
 
