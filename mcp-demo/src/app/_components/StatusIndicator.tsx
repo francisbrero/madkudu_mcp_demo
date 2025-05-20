@@ -7,16 +7,21 @@ export function TypingIndicator() {
     <div className="flex justify-start">
       <div className="bg-[rgba(var(--color-surface),0.5)] px-3 py-2 rounded-lg border border-gray-700">
         <div className="flex space-x-1.5">
-          <div className="h-2 w-2 bg-[rgb(var(--color-primary))] rounded-full animate-bounce" style={{ animationDelay: "0s" }}></div>
-          <div className="h-2 w-2 bg-[rgb(var(--color-primary))] rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-          <div className="h-2 w-2 bg-[rgb(var(--color-primary))] rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+          <div className="h-2 w-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0s" }}></div>
+          <div className="h-2 w-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+          <div className="h-2 w-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
         </div>
       </div>
     </div>
   );
 }
 
-export default function StatusIndicator({ loadingState }: { loadingState: LoadingState }) {
+export default function StatusIndicator({ loadingState }: { loadingState?: LoadingState }) {
+  // Return null if loadingState is not available or not loading
+  if (!loadingState?.isLoading || !loadingState?.step) {
+    return null;
+  }
+  
   return (
     <div className="flex justify-start">
       <div className="bg-[rgba(var(--color-primary),0.1)] px-3 py-2 rounded-lg border border-[rgba(var(--color-primary),0.3)]">

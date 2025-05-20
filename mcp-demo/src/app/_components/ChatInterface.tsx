@@ -16,6 +16,11 @@ export type Agent = {
   id: string;
   name: string;
   description: string;
+  systemPrompt?: string;
+  allowedApis?: string[];
+  inputType?: string;
+  outputFormat?: string;
+  active?: boolean;
 };
 
 export type Message = {
@@ -33,21 +38,25 @@ export type StreamData = {
   done?: boolean;
 };
 
-const agents: Agent[] = [
+// Default agents as fallback - will be replaced by DB agents
+const defaultAgents: Agent[] = [
   {
     id: "executive-outreach",
     name: "Executive Outreach Writer",
     description: "Generate personalized executive outreach messages based on company data",
+    active: true,
   },
   {
     id: "account-plan",
     name: "Account Plan Generator",
     description: "Create a tactical account plan for strategic sales targets with prioritized actions",
+    active: true,
   },
   {
     id: "agent3",
     name: "QBR Manager",
     description: "Prepare for a Quarterly Business Review with usage analytics and growth opportunities",
+    active: true,
   },
 ];
 
@@ -55,39 +64,40 @@ export default function ChatInterface() {
   const [input, setInput] = useState("");
   const [leftMessages, setLeftMessages] = useState<Message[]>([]);
   const [rightMessages, setRightMessages] = useState<Message[]>([]);
-  const [selectedAgent, setSelectedAgent] = useState<Agent>(agents[0]);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [agents, setAgents] = useState<Agent[]>(defaultAgents);
   const [leftLoading, setLeftLoading] = useState<LoadingState>({ isLoading: false });
   const [rightLoading, setRightLoading] = useState<LoadingState>({ isLoading: false });
-  const [streamingMessage, setStreamingMessage] = useState("");
   const [enrichmentData, setEnrichmentData] = useState<Record<string, unknown>>({});
   const showEnrichmentData = true;
   
   const openaiMutation = api.openai.chat.useMutation();
   const madkuduMutation = api.madkudu.enhancedChat.useMutation();
   
-  // Simulate streaming with character-by-character reveal
-  const simulateStreaming = (finalText: string, callback: () => void) => {
-    const textLength = finalText.length;
-    let charIndex = 0;
-    const intervalSpeed = 10; // milliseconds per character
-    
-    setStreamingMessage("");
-    
-    const streamingInterval = setInterval(() => {
-      if (charIndex < textLength) {
-        setStreamingMessage(finalText.slice(0, charIndex + 1));
-        charIndex++;
-      } else {
-        clearInterval(streamingInterval);
-        callback();
+  // Fetch agents from the database
+  const { data: agentsData, isLoading: isLoadingAgents } = api.agent.getActive.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
+  
+  useEffect(() => {
+    if (agentsData && agentsData.length > 0) {
+      // Convert API strings to proper objects
+      const formattedAgents = agentsData.map(agent => ({
+        ...agent,
+        allowedApis: JSON.parse(agent.allowedApis as string) as string[],
+      }));
+      setAgents(formattedAgents);
+      
+      // Set the first agent as selected if none selected yet
+      if (!selectedAgent) {
+        setSelectedAgent(formattedAgents[0]);
       }
-    }, intervalSpeed);
-    
-    return () => {
-      clearInterval(streamingInterval);
-    };
-  };
-
+    } else if (defaultAgents.length > 0 && !selectedAgent) {
+      // Fallback to default agents if none from API
+      setSelectedAgent(defaultAgents[0]);
+    }
+  }, [agentsData, selectedAgent]);
+  
   // Handle agent change for both panels
   const handleAgentChange = (agent: Agent) => {
     setSelectedAgent(agent);
@@ -98,7 +108,7 @@ export default function ChatInterface() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || leftLoading.isLoading || rightLoading.isLoading) return;
+    if (!input.trim() || leftLoading.isLoading || rightLoading.isLoading || !selectedAgent) return;
     
     // Add user message to both chat panels
     const userMessage: Message = {
@@ -112,18 +122,8 @@ export default function ChatInterface() {
     // Set loading states
     setLeftLoading({ isLoading: true, step: "Initializing chat..." });
     setRightLoading({ isLoading: true, step: "Preparing request..." });
-    
-    // Reset streaming message
-    setStreamingMessage("");
 
     try {
-      // Add placeholder message for streaming response
-      const assistantPlaceholder: Message = {
-        role: "assistant",
-        content: "",
-      };
-      setLeftMessages((prev) => [...prev, assistantPlaceholder]);
-
       // Setup for left panel (GPT-4o only)
       setLeftLoading({ isLoading: true, step: "Connecting to API..." });
       
@@ -133,7 +133,7 @@ export default function ChatInterface() {
       setTimeout(() => {
         setLeftLoading({ isLoading: true, step: "Generating response..." });
         
-        // Use regular mutation for left panel with simulated streaming
+        // Use regular mutation for left panel without simulated streaming
         openaiMutation.mutate(
           {
             messages: messages.map(({ role, content }) => ({
@@ -144,25 +144,26 @@ export default function ChatInterface() {
           },
           {
             onSuccess: (data) => {
-              // Simulate streaming of the response
-              const cleanupStreaming = simulateStreaming(data.content ?? "", () => {
-                setLeftLoading({ isLoading: false });
-              });
-              
-              // Cleanup function if component unmounts during streaming
-              return () => cleanupStreaming();
-            },
-            onError: (err) => {
-              console.error("OpenAI error:", err);
+              // Directly add the response to messages without streaming
+              setLeftMessages((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: data.content ?? "",
+                },
+              ]);
               setLeftLoading({ isLoading: false });
-              setLeftMessages((prev) => {
-                const newMessages = [...prev];
-                newMessages[newMessages.length - 1] = {
+            },
+            onError: (error: unknown) => {
+              console.error("OpenAI error:", error);
+              setLeftLoading({ isLoading: false });
+              setLeftMessages((prev) => [
+                ...prev,
+                {
                   role: "assistant",
                   content: "Sorry, there was an error generating the response. Please try again.",
-                };
-                return newMessages;
-              });
+                },
+              ]);
             }
           }
         );
@@ -245,8 +246,8 @@ export default function ChatInterface() {
                   }
                   setRightLoading({ isLoading: false });
                 },
-                onError: (err) => {
-                  console.error("Error with MadKudu API:", err);
+                onError: (error: unknown) => {
+                  console.error("Error with MadKudu API:", error instanceof Error ? error.message : String(error));
                   setRightMessages((prev) => [
                     ...prev,
                     {
@@ -262,8 +263,8 @@ export default function ChatInterface() {
           }, 1000);
         }, 1000);
       }, 1000);
-    } catch (err) {
-      console.error("Error submitting:", err);
+    } catch (error: unknown) {
+      console.error("Error submitting:", error instanceof Error ? error.message : String(error));
       setLeftLoading({ isLoading: false });
       setRightLoading({ isLoading: false });
     }
@@ -271,91 +272,72 @@ export default function ChatInterface() {
     setInput("");
   };
 
-  // Update streaming content in the last message
-  useEffect(() => {
-    if (streamingMessage && leftMessages.length > 0) {
-      setLeftMessages((prev) => {
-        const newMessages = [...prev];
-        newMessages[newMessages.length - 1] = {
-          role: "assistant",
-          content: streamingMessage,
-        };
-        return newMessages;
-      });
-    }
-  }, [streamingMessage]);
-
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)]">
       {/* Agent Selector moved to top */}
       <div className="mb-4">
-        <AgentSelector
-          agents={agents}
-          selectedAgent={selectedAgent}
-          onSelectAgent={handleAgentChange}
-          label="Select Agent"
-        />
+        {isLoadingAgents ? (
+          <div className="text-gray-400">Loading agents...</div>
+        ) : selectedAgent ? (
+          <AgentSelector
+            agents={agents}
+            selectedAgent={selectedAgent}
+            onSelectAgent={handleAgentChange}
+            label="Select Agent"
+          />
+        ) : (
+          <div className="text-gray-400">No agents available. Please create some in the Agent Builder.</div>
+        )}
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
-        {/* Left Panel (GPT-4o Only) */}
-        <div className="flex flex-col bg-[rgba(var(--color-surface),0.7)] rounded-lg overflow-hidden shadow-lg border border-gray-700">
-          <div className="px-3 py-2 bg-[rgba(var(--color-primary),0.05)] border-b border-gray-700">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-sm">GPT-4o Only (Streaming)</span>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <span className="text-sm">Active Agent: {selectedAgent.name}</span>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow overflow-hidden">
+        {/* Left Panel: GPT-4o Only */}
+        <div className="flex flex-col bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+          <div className="p-4 bg-gray-800 border-b border-gray-700">
+            <h2 className="text-xl font-bold">GPT-4o Only</h2>
+            <p className="text-sm text-gray-400">
+              Standard GPT without any enrichment
+            </p>
           </div>
-          
           <ChatPanel
             messages={leftMessages}
-            loadingState={leftLoading}
+            loading={leftLoading}
+            className="flex-grow"
           />
         </div>
-        
-        {/* Right Panel (GPT-4o + MadKudu API) */}
-        <div className="flex flex-col bg-[rgba(var(--color-surface),0.7)] rounded-lg overflow-hidden shadow-lg border border-gray-700">
-          <div className="px-3 py-2 bg-[rgba(var(--color-primary),0.05)] border-b border-gray-700">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-sm">GPT-4o + MadKudu API</span>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <span className="text-sm">Active Agent: {selectedAgent.name}</span>
-              </div>
-            </div>
+
+        {/* Right Panel: GPT-4o + MadKudu */}
+        <div className="flex flex-col bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+          <div className="p-4 bg-gray-800 border-b border-gray-700">
+            <h2 className="text-xl font-bold">GPT-4o + MadKudu</h2>
+            <p className="text-sm text-gray-400">
+              Enhanced with MadKudu enrichment
+            </p>
           </div>
-          
-          <ChatPanel
-            messages={rightMessages}
-            enrichmentData={enrichmentData}
-            showEnrichment={showEnrichmentData}
-            loadingState={rightLoading}
-          />
+          <div className="flex-grow flex flex-col overflow-hidden">
+            <ChatPanel
+              messages={rightMessages}
+              loading={rightLoading}
+              className="flex-grow"
+            />
+            {showEnrichmentData && Object.keys(enrichmentData).length > 0 && (
+              <div className="p-4 bg-gray-800 border-t border-gray-700 overflow-y-auto max-h-[30vh]">
+                <EnrichmentProgress enrichmentData={enrichmentData} />
+              </div>
+            )}
+          </div>
         </div>
       </div>
-      
-      {/* Chat Input */}
-      <div className="mt-6 bg-[rgba(var(--color-surface),0.7)] rounded-lg p-3 shadow-lg border border-gray-700">
-        <form onSubmit={handleSubmit} className="flex items-center">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message here..."
-            className="flex-1 px-4 py-3 bg-[rgb(var(--color-background))] text-white rounded-l-md border border-gray-700 focus:outline-none focus:border-[rgb(var(--color-primary))]"
-            disabled={leftLoading.isLoading || rightLoading.isLoading}
-          />
-          <button
-            type="submit"
-            className="bg-[rgb(var(--color-primary))] text-white px-6 py-3 rounded-r-md font-medium hover:bg-[rgb(var(--color-primary-dark))] transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={leftLoading.isLoading || rightLoading.isLoading}
-          >
-            Send
-          </button>
-        </form>
+
+      {/* Shared Input Bar */}
+      <div className="mt-6">
+        <ChatInput 
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onSubmit={handleSubmit}
+          isLoading={leftLoading.isLoading || rightLoading.isLoading}
+          selectedAgent={selectedAgent}
+        />
       </div>
     </div>
   );

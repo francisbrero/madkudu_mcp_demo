@@ -10,14 +10,16 @@ type ChatPanelProps = {
   messages: Message[];
   enrichmentData?: Record<string, unknown>;
   showEnrichment?: boolean;
-  loadingState?: LoadingState;
+  loading?: LoadingState;
+  className?: string;
 };
 
 export default function ChatPanel({ 
   messages, 
   enrichmentData = {}, 
   showEnrichment = false,
-  loadingState = { isLoading: false }
+  loading,
+  className = ""
 }: ChatPanelProps) {
   const messageEndRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +38,7 @@ export default function ChatPanel({
   }, [messages]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 bg-panel">
+    <div className={`flex-1 overflow-y-auto p-4 bg-panel ${className}`}>
       {messages.length === 0 ? (
         <div className="flex h-full items-center justify-center text-gray-400">
           <p>Start a conversation by typing a message below.</p>
@@ -67,7 +69,9 @@ export default function ChatPanel({
           ))}
           
           {/* Show typing indicator when streaming/loading */}
-          {loadingState.isLoading && messages.length > 0 && messages[messages.length - 1].role === "user" && (
+          {loading?.isLoading && messages.length > 0 && 
+           messages[messages.length - 1].role === "user" && 
+           loading?.step?.includes("Generating") && (
             <TypingIndicator />
           )}
           
@@ -79,8 +83,8 @@ export default function ChatPanel({
           )}
           
           {/* Loading progress indicator for the right panel */}
-          {loadingState.isLoading && loadingState.step && (
-            <StatusIndicator loadingState={loadingState} />
+          {loading?.isLoading && loading?.step && (
+            <StatusIndicator loadingState={loading} />
           )}
           
           <div ref={messageEndRef} />

@@ -3,15 +3,39 @@
 import { LoadingState } from "./ChatInterface";
 
 type EnrichmentProgressProps = {
-  loadingState: LoadingState;
+  loadingState?: LoadingState;
+  enrichmentData?: Record<string, unknown>;
   showSteps?: boolean;
 };
 
 export default function EnrichmentProgress({ 
   loadingState, 
+  enrichmentData,
   showSteps = true 
 }: EnrichmentProgressProps) {
-  // Define the steps in the enrichment process
+  // Return enrichment data display if provided
+  if (enrichmentData && Object.keys(enrichmentData).length > 0) {
+    return (
+      <div className="mt-2 px-3 py-2 bg-purple-800/10 rounded-lg border border-purple-700/30 overflow-auto max-h-[30vh]">
+        <h4 className="text-xs font-medium text-purple-300 mb-2">MadKudu Enrichment Data</h4>
+        
+        {Object.entries(enrichmentData).map(([key, value]) => (
+          <div key={key} className="mb-3">
+            <h5 className="text-xs font-semibold text-purple-200 mb-1">{key}</h5>
+            <div className="text-xs text-gray-300 bg-gray-800/50 p-2 rounded overflow-auto max-h-40">
+              {typeof value === 'string' ? (
+                <pre className="whitespace-pre-wrap">{value}</pre>
+              ) : (
+                <pre className="whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Define the steps in the enrichment process if we're showing loading
   const steps = [
     "Extracting context",
     "Identifying entities",
@@ -19,9 +43,14 @@ export default function EnrichmentProgress({
     "Generating response"
   ];
 
-  // Determine the current step index
+  // Guard against undefined loadingState
+  if (!loadingState?.isLoading) {
+    return null;
+  }
+
+  // Determine the current step index with proper null/undefined checking
   const getCurrentStepIndex = () => {
-    if (!loadingState.step) return -1;
+    if (!loadingState?.step) return -1;
     
     if (loadingState.step.includes("Extracting")) return 0;
     if (loadingState.step.includes("Identifying")) return 1;
@@ -32,10 +61,6 @@ export default function EnrichmentProgress({
   };
 
   const currentStepIndex = getCurrentStepIndex();
-
-  if (!loadingState.isLoading) {
-    return null;
-  }
 
   return (
     <div className="mt-2 px-3 py-2 bg-purple-800/10 rounded-lg border border-purple-700/30">
