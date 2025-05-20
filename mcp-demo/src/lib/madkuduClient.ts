@@ -6,7 +6,9 @@ const headers = { 'x-api-key': apiKey };
 
 export const lookupPerson = async (email: string) => {
   try {
+    console.log(`[MadKudu API] Looking up person with email: ${email}`);
     const { data } = await axios.post('https://madapi.madkudu.com/lookup/persons', { email }, { headers });
+    console.log(`[MadKudu API] Person lookup successful for ${email}`);
     return data;
   } catch (error) {
     console.error('Error looking up person:', error);
@@ -16,7 +18,9 @@ export const lookupPerson = async (email: string) => {
 
 export const lookupAccount = async (domain: string) => {
   try {
+    console.log(`[MadKudu API] Looking up account with domain: ${domain}`);
     const { data } = await axios.post('https://madapi.madkudu.com/lookup/accounts', { domain }, { headers });
+    console.log(`[MadKudu API] Account lookup successful for ${domain}`);
     return data;
   } catch (error) {
     console.error('Error looking up account:', error);
@@ -26,7 +30,9 @@ export const lookupAccount = async (domain: string) => {
 
 export const getAccountDetails = async (accountId: string) => {
   try {
+    console.log(`[MadKudu API] Getting account details for ID: ${accountId}`);
     const { data } = await axios.get(`https://madapi.madkudu.com/accounts/${accountId}`, { headers });
+    console.log(`[MadKudu API] Account details retrieved for ID: ${accountId}`);
     return data;
   } catch (error) {
     console.error('Error getting account details:', error);
@@ -36,7 +42,9 @@ export const getAccountDetails = async (accountId: string) => {
 
 export const getContactDetails = async (contactId: string) => {
   try {
+    console.log(`[MadKudu API] Getting contact details for ID: ${contactId}`);
     const { data } = await axios.get(`https://madapi.madkudu.com/contacts/${contactId}`, { headers });
+    console.log(`[MadKudu API] Contact details retrieved for ID: ${contactId}`);
     return data;
   } catch (error) {
     console.error('Error getting contact details:', error);
@@ -46,6 +54,7 @@ export const getContactDetails = async (contactId: string) => {
 
 export const getAIResearch = async (domain: string): Promise<ReadableStream | null> => {
   try {
+    console.log(`[MadKudu API] Getting AI research for domain: ${domain}`);
     const response = await fetch(`https://madapi.madkudu.com/ai/account-research?domain=${domain}`, {
       headers: {
         'x-api-key': apiKey,
@@ -57,6 +66,7 @@ export const getAIResearch = async (domain: string): Promise<ReadableStream | nu
       throw new Error(`API request failed with status ${response.status}`);
     }
     
+    console.log(`[MadKudu API] AI research requested successfully for ${domain}`);
     return response.body;
   } catch (error) {
     console.error('Error getting AI research:', error);

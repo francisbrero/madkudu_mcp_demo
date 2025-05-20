@@ -3,12 +3,15 @@
 import { useEffect, useRef } from "react";
 import { Message } from "./ChatInterface";
 import ReactMarkdown from "react-markdown";
+import EnrichmentDataDisplay from "./EnrichmentDataDisplay";
 
 type ChatPanelProps = {
   messages: Message[];
+  enrichmentData?: Record<string, unknown>;
+  showEnrichment?: boolean;
 };
 
-export default function ChatPanel({ messages }: ChatPanelProps) {
+export default function ChatPanel({ messages, enrichmentData = {}, showEnrichment = false }: ChatPanelProps) {
   const messageEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,6 +49,12 @@ export default function ChatPanel({ messages }: ChatPanelProps) {
               </div>
             </div>
           ))}
+          
+          {/* Show enrichment data if available and enabled */}
+          {showEnrichment && Object.keys(enrichmentData).length > 0 && (
+            <EnrichmentDataDisplay enrichmentData={enrichmentData} />
+          )}
+          
           <div ref={messageEndRef} />
         </div>
       )}
