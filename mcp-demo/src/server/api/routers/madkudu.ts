@@ -803,4 +803,109 @@ NPS: 7 (from 5 in previous quarter)
         enrichmentData: extractedInfo,
       };
     }),
+
+  // Direct API testing procedures
+  lookupPerson: publicProcedure
+    .input(z.object({ email: z.string() }))
+    .mutation(async ({ input }) => {
+      console.log(`[MadKudu API Test] Looking up person with email: ${input.email}`);
+      try {
+        const result = await lookupPerson(input.email);
+        return result;
+      } catch (error) {
+        console.error(`[MadKudu API Test] Error looking up person:`, error);
+        throw error;
+      }
+    }),
+
+  lookupAccount: publicProcedure
+    .input(z.object({ domain: z.string() }))
+    .mutation(async ({ input }) => {
+      console.log(`[MadKudu API Test] Looking up account with domain: ${input.domain}`);
+      try {
+        const result = await lookupAccount(input.domain);
+        return result;
+      } catch (error) {
+        console.error(`[MadKudu API Test] Error looking up account:`, error);
+        throw error;
+      }
+    }),
+
+  getTopUsers: publicProcedure
+    .input(z.object({ domain: z.string() }))
+    .mutation(async ({ input }) => {
+      console.log(`[MadKudu API Test] Getting top users for domain: ${input.domain}`);
+      try {
+        // This is a placeholder - you would implement the actual top users API call
+        // For now, we'll return a mock response
+        return {
+          domain: input.domain,
+          topUsers: [
+            {
+              name: "Francis Brero",
+              title: "CPO",
+              email: "francis@madkudu.com",
+              seniority: "executive",
+              department: "Product"
+            },
+            {
+              name: "Sam Levan",
+              title: "CEO",
+              email: "sam@madkudu.com",
+              seniority: "executive",
+              department: "Executive"
+            },
+            {
+              name: "John Smith",
+              title: "VP Marketing",
+              email: "john@madkudu.com",
+              seniority: "executive",
+              department: "Marketing"
+            }
+          ]
+        };
+      } catch (error) {
+        console.error(`[MadKudu API Test] Error getting top users:`, error);
+        throw error;
+      }
+    }),
+
+  getAccountDetails: publicProcedure
+    .input(z.object({ accountId: z.string() }))
+    .mutation(async ({ input }) => {
+      console.log(`[MadKudu API Test] Getting account details for ID: ${input.accountId}`);
+      try {
+        const result = await getAccountDetails(input.accountId);
+        return result;
+      } catch (error) {
+        console.error(`[MadKudu API Test] Error getting account details:`, error);
+        throw error;
+      }
+    }),
+
+  getContactDetails: publicProcedure
+    .input(z.object({ contactId: z.string() }))
+    .mutation(async ({ input }) => {
+      console.log(`[MadKudu API Test] Getting contact details for ID: ${input.contactId}`);
+      try {
+        const result = await getContactDetails(input.contactId);
+        return result;
+      } catch (error) {
+        console.error(`[MadKudu API Test] Error getting contact details:`, error);
+        throw error;
+      }
+    }),
+
+  getAIResearch: publicProcedure
+    .input(z.object({ domain: z.string() }))
+    .mutation(async ({ input }) => {
+      console.log(`[MadKudu API Test] Getting AI research for domain: ${input.domain}`);
+      try {
+        const result = await getAIResearchWithRetry(input.domain);
+        return result;
+      } catch (error) {
+        console.error(`[MadKudu API Test] Error getting AI research:`, error);
+        throw error;
+      }
+    }),
 }); 
