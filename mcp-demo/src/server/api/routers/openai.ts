@@ -3,10 +3,30 @@ import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { env } from "~/env";
 import OpenAI from "openai";
 import { observable } from "@trpc/server/observable";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 const openai = new OpenAI({
   apiKey: env.OPENAI_API_KEY,
 });
+
+// Terminal color codes for logging
+const colors = {
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
+  magenta: "\x1b[35m",
+  cyan: "\x1b[36m",
+  reset: "\x1b[0m",
+};
+
+// Function to log prompt in color
+const logPrompt = (prompt: string) => {
+  console.log(`${colors.magenta}[OpenAI Router] Prompt:${colors.reset}`);
+  console.log(`${colors.cyan}${prompt}${colors.reset}`);
+};
 
 const agentInstructionsMap = {
   "executive-outreach": `You are Francis Brero, CPO at MadKudu. You're preparing a first outreach to an executive. 
@@ -83,6 +103,41 @@ const agentInstructionsMap = {
   Be direct, data-focused, and business-oriented. Focus on tangible outcomes and ROI.`
 };
 
+// Function to get agent-specific system instruction
+const getSystemInstruction = async (agentId: string): Promise<string> => {
+  // Check if it's one of our predefined agents
+  if (agentId in agentInstructionsMap) {
+    return agentInstructionsMap[agentId as keyof typeof agentInstructionsMap];
+  }
+  
+  // Try to fetch custom agent info from the database
+  try {
+    const customAgent = await prisma.agent.findUnique({
+      where: { id: agentId },
+    });
+    
+    if (customAgent) {
+      console.log(`[OpenAI Router] Found custom agent: ${customAgent.name}`);
+      
+      // For custom agents, only use name and description, NOT the system prompt
+      return `You are acting custom agent called: "${customAgent.name}".
+        
+Your role is described to users as " ${customAgent.description}"
+
+You are a helpful assistant. Please provide information and assistance based on the user's input.
+If you're provided with an email try to infer information about the person.
+If you're provided with a domain, try to infer information about the company.
+Always try to answer with something useful and don't ask more questions.`;
+    }
+  } catch (error) {
+    console.error("[OpenAI Router] Error fetching custom agent:", 
+      error instanceof Error ? error.message : String(error));
+  }
+  
+  // Default fallback
+  return "You are a helpful assistant.";
+};
+
 export const openaiRouter = createTRPCRouter({
   chat: publicProcedure
     .input(
@@ -97,15 +152,17 @@ export const openaiRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input }) => {
-      // Get the agent-specific system instruction
-      const systemInstruction = agentInstructionsMap[input.agentId as keyof typeof agentInstructionsMap] || 
-        "You are a helpful assistant.";
+      // Get system instruction based on agent
+      const systemInstruction = await getSystemInstruction(input.agentId);
       
       // Add system instruction to the beginning of the messages
       const messagesWithSystem = [
         { role: "system", content: systemInstruction },
         ...input.messages,
       ];
+
+      // Log the system prompt with color highlighting
+      logPrompt(systemInstruction);
 
       // Call OpenAI API
       const completion = await openai.chat.completions.create({
@@ -131,15 +188,17 @@ export const openaiRouter = createTRPCRouter({
       })
     )
     .subscription(async ({ input }) => {
-      // Get the agent-specific system instruction
-      const systemInstruction = agentInstructionsMap[input.agentId as keyof typeof agentInstructionsMap] || 
-        "You are a helpful assistant.";
+      // Get system instruction based on agent
+      const systemInstruction = await getSystemInstruction(input.agentId);
       
       // Add system instruction to the beginning of the messages
       const messagesWithSystem = [
         { role: "system", content: systemInstruction },
         ...input.messages,
       ];
+
+      // Log the system prompt with color highlighting
+      logPrompt(systemInstruction);
 
       return observable<{ delta: string; done: boolean }>((observer) => {
         const run = async () => {
