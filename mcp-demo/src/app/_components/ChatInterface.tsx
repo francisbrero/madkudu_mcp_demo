@@ -1,10 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import ChatPanel from "./ChatPanel";
 import ChatInput from "./ChatInput";
 import AgentSelector from "./AgentSelector";
+import EnrichmentProgress from "./EnrichmentProgress";
 import { api } from "~/trpc/react";
+
+// Define a simple interface for our subscription
+interface StreamSubscription {
+  unsubscribe: () => void;
+}
 
 export type Agent = {
   id: string;
@@ -15,6 +21,16 @@ export type Agent = {
 export type Message = {
   role: "user" | "assistant" | "system";
   content: string;
+};
+
+export type LoadingState = {
+  isLoading: boolean;
+  step?: string;
+};
+
+export type StreamData = {
+  delta?: string;
+  done?: boolean;
 };
 
 const agents: Agent[] = [
@@ -41,16 +57,37 @@ export default function ChatInterface() {
   const [rightMessages, setRightMessages] = useState<Message[]>([]);
   const [leftAgent, setLeftAgent] = useState<Agent>(agents[0]);
   const [rightAgent, setRightAgent] = useState<Agent>(agents[0]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [leftLoading, setLeftLoading] = useState<LoadingState>({ isLoading: false });
+  const [rightLoading, setRightLoading] = useState<LoadingState>({ isLoading: false });
   const [streamingMessage, setStreamingMessage] = useState("");
   const [enrichmentData, setEnrichmentData] = useState<Record<string, unknown>>({});
   const [showEnrichmentData, setShowEnrichmentData] = useState(true);
-
+  
   const openaiMutation = api.openai.chat.useMutation();
   const madkuduMutation = api.madkudu.enhancedChat.useMutation();
   
-  // Get the subscription client
-  const streamChat = api.openai.streamChat.useSubscription;
+  // Simulate streaming with character-by-character reveal
+  const simulateStreaming = (finalText: string, callback: () => void) => {
+    const textLength = finalText.length;
+    let charIndex = 0;
+    const intervalSpeed = 10; // milliseconds per character
+    
+    setStreamingMessage("");
+    
+    const streamingInterval = setInterval(() => {
+      if (charIndex < textLength) {
+        setStreamingMessage(finalText.slice(0, charIndex + 1));
+        charIndex++;
+      } else {
+        clearInterval(streamingInterval);
+        callback();
+      }
+    }, intervalSpeed);
+    
+    return () => {
+      clearInterval(streamingInterval);
+    };
+  };
 
   // Reset left chat history when agent changes
   const handleLeftAgentChange = (agent: Agent) => {
@@ -67,8 +104,8 @@ export default function ChatInterface() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
+    if (!input.trim() || leftLoading.isLoading || rightLoading.isLoading) return;
+    
     // Add user message to both chat panels
     const userMessage: Message = {
       role: "user",
@@ -77,8 +114,13 @@ export default function ChatInterface() {
 
     setLeftMessages((prev) => [...prev, userMessage]);
     setRightMessages((prev) => [...prev, userMessage]);
-    setIsLoading(true);
-    setStreamingMessage(""); // Reset streaming message
+    
+    // Set loading states
+    setLeftLoading({ isLoading: true, step: "Initializing chat..." });
+    setRightLoading({ isLoading: true, step: "Preparing request..." });
+    
+    // Reset streaming message
+    setStreamingMessage("");
 
     try {
       // Add placeholder message for streaming response
@@ -88,82 +130,148 @@ export default function ChatInterface() {
       };
       setLeftMessages((prev) => [...prev, assistantPlaceholder]);
 
-      // Regular mutation for left panel (simpler approach for now)
-      openaiMutation.mutate(
-        {
-          messages: [...leftMessages, userMessage].map(({ role, content }) => ({
-            role,
-            content,
-          })),
-          agentId: leftAgent.id,
-        },
-        {
-          onSuccess: (data) => {
-            setLeftMessages((prev) => {
-              const newMessages = [...prev];
-              newMessages[newMessages.length - 1] = {
-                role: "assistant",
-                content: data.content,
-              };
-              return newMessages;
-            });
+      // Setup for left panel (GPT-4o only)
+      setLeftLoading({ isLoading: true, step: "Connecting to API..." });
+      
+      // Start with regular API call
+      const messages = [...leftMessages, userMessage];
+      
+      setTimeout(() => {
+        setLeftLoading({ isLoading: true, step: "Generating response..." });
+        
+        // Use regular mutation for left panel with simulated streaming
+        openaiMutation.mutate(
+          {
+            messages: messages.map(({ role, content }) => ({
+              role, 
+              content,
+            })),
+            agentId: leftAgent.id,
           },
-          onError: (err) => {
-            console.error("Error with OpenAI API:", err);
-            setLeftMessages((prev) => {
-              const newMessages = [...prev];
-              newMessages[newMessages.length - 1] = {
-                role: "assistant",
-                content: "Sorry, there was an error processing your request. Please try again later.",
-              };
-              return newMessages;
-            });
-          }
-        }
-      );
-
-      // Call enhanced API with MadKudu enrichment (right panel)
-      madkuduMutation.mutate(
-        {
-          messages: [...rightMessages, userMessage].map(({ role, content }) => ({
-            role,
-            content,
-          })),
-          agentId: rightAgent.id,
-        },
-        {
-          onSuccess: (data) => {
-            setRightMessages((prev) => [
-              ...prev,
-              {
-                role: "assistant",
-                content: data.content,
-              },
-            ]);
-            if (data.enrichmentData) {
-              console.log("[MadKudu Enrichment Data]", data.enrichmentData);
-              setEnrichmentData(data.enrichmentData);
+          {
+            onSuccess: (data) => {
+              // Simulate streaming of the response
+              const cleanupStreaming = simulateStreaming(data.content, () => {
+                setLeftLoading({ isLoading: false });
+              });
+              
+              // Cleanup function if component unmounts during streaming
+              return () => cleanupStreaming();
+            },
+            onError: (err) => {
+              console.error("OpenAI error:", err);
+              setLeftLoading({ isLoading: false });
+              setLeftMessages((prev) => {
+                const newMessages = [...prev];
+                newMessages[newMessages.length - 1] = {
+                  role: "assistant",
+                  content: "Sorry, there was an error generating the response. Please try again.",
+                };
+                return newMessages;
+              });
             }
-          },
-          onError: (err) => {
-            console.error("Error with MadKudu API:", err);
-            setRightMessages((prev) => [
-              ...prev,
+          }
+        );
+      }, 500);
+
+      // Call enhanced API with MadKudu enrichment (right panel) with progress updates
+      setRightLoading({ isLoading: true, step: "Extracting context from message..." });
+      
+      setTimeout(() => {
+        setRightLoading({ isLoading: true, step: "Identifying entities..." });
+        
+        setTimeout(() => {
+          setRightLoading({ isLoading: true, step: "Retrieving enrichment data..." });
+          
+          setTimeout(() => {
+            setRightLoading({ isLoading: true, step: "Generating enhanced response..." });
+            
+            madkuduMutation.mutate(
               {
-                role: "assistant",
-                content:
-                  "Sorry, there was an error processing your request with enrichment. Please try again later.",
+                messages: [...rightMessages, userMessage].map(({ role, content }) => ({
+                  role,
+                  content,
+                })),
+                agentId: rightAgent.id,
               },
-            ]);
-          },
-          onSettled: () => {
-            setIsLoading(false);
-          },
-        }
-      );
+              {
+                onSuccess: (data) => {
+                  setRightMessages((prev) => [
+                    ...prev,
+                    {
+                      role: "assistant",
+                      content: data.content,
+                    },
+                  ]);
+                  if (data.enrichmentData) {
+                    console.log("[MadKudu Enrichment Data]", data.enrichmentData);
+                    // Debug: Log each key and value in enrichmentData
+                    console.log("[MadKudu Enrichment Data Keys]", Object.keys(data.enrichmentData));
+                    Object.entries(data.enrichmentData).forEach(([key, value]) => {
+                      console.log(`[MadKudu Enrichment] ${key}:`, value);
+                    });
+                    
+                    // Create a structured format for display instead of the raw data
+                    const formattedData: Record<string, unknown> = {};
+                    
+                    // Format Contact Context
+                    if (data.enrichmentData.contactContext) {
+                      formattedData["Contact Context"] = data.enrichmentData.contactContext;
+                    }
+                    
+                    // Format Company Context
+                    if (data.enrichmentData.companyContext) {
+                      formattedData["Company Context"] = data.enrichmentData.companyContext;
+                    }
+                    
+                    // Format Company Name
+                    if (data.enrichmentData.companyName) {
+                      formattedData["Company Name"] = data.enrichmentData.companyName;
+                    }
+                    
+                    // Format Research Context
+                    if (data.enrichmentData.researchContext) {
+                      const researchText = data.enrichmentData.researchContext as string;
+                      console.log(`[MadKudu Enrichment] Research Context (length: ${researchText.length}): ${researchText.substring(0, 100)}...`);
+                      
+                      // Check if we got an empty string or 'No research data found'
+                      if (!researchText.trim() || researchText === 'No research data found') {
+                        console.log(`[MadKudu Enrichment] Empty or default research context data received`);
+                      }
+                      
+                      formattedData["Research Context"] = researchText;
+                    } else {
+                      console.log(`[MadKudu Enrichment] No research context available`);
+                    }
+                    
+                    console.log("[MadKudu Enrichment] Formatted data:", formattedData);
+                    setEnrichmentData(formattedData);
+                    // Debug: Log the state after setting
+                    setTimeout(() => console.log("[MadKudu Enrichment] State after setting:", enrichmentData), 100);
+                  }
+                  setRightLoading({ isLoading: false });
+                },
+                onError: (err) => {
+                  console.error("Error with MadKudu API:", err);
+                  setRightMessages((prev) => [
+                    ...prev,
+                    {
+                      role: "assistant",
+                      content:
+                        "Sorry, there was an error processing your request with enrichment. Please try again later.",
+                    },
+                  ]);
+                  setRightLoading({ isLoading: false });
+                },
+              }
+            );
+          }, 1000);
+        }, 1000);
+      }, 1000);
     } catch (err) {
       console.error("Error submitting:", err);
-      setIsLoading(false);
+      setLeftLoading({ isLoading: false });
+      setRightLoading({ isLoading: false });
     }
 
     setInput("");
@@ -192,14 +300,19 @@ export default function ChatInterface() {
             agents={agents}
             selectedAgent={leftAgent}
             onSelectAgent={handleLeftAgentChange}
-            label="GPT-4o Only"
+            label="GPT-4o Only (Streaming)"
           />
         </div>
-        <div className="bg-purple-900/50 px-3 py-1.5 border-b border-purple-700 text-sm flex items-center">
-          <div className="bg-green-400 h-2 w-2 rounded-full mr-2"></div>
-          <span>Active Agent: <span className="font-semibold">{leftAgent.name}</span></span>
+        <div className="bg-purple-900/50 px-3 py-1.5 border-b border-purple-700 text-sm flex items-center justify-between">
+          <div className="flex items-center">
+            <div className={`h-2 w-2 rounded-full mr-2 ${leftLoading.isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
+            <span>Active Agent: <span className="font-semibold">{leftAgent.name}</span></span>
+          </div>
+          {leftLoading.isLoading && (
+            <div className="text-xs font-medium text-yellow-300">{leftLoading.step}</div>
+          )}
         </div>
-        <ChatPanel messages={leftMessages} />
+        <ChatPanel messages={leftMessages} loadingState={leftLoading} />
       </div>
 
       {/* Right Panel - GPT-4o + MadKudu */}
@@ -211,27 +324,43 @@ export default function ChatInterface() {
             onSelectAgent={handleRightAgentChange}
             label="GPT-4o + MadKudu API"
           />
-          <div className="flex items-center">
-            <label htmlFor="show-enrichment" className="mr-2 text-xs text-white">
-              Show Enrichment
-            </label>
-            <input
-              id="show-enrichment"
-              type="checkbox"
-              checked={showEnrichmentData}
-              onChange={() => setShowEnrichmentData(!showEnrichmentData)}
-              className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-            />
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center">
+              <label htmlFor="show-enrichment" className="mr-2 text-xs text-white">
+                Show Enrichment
+              </label>
+              <input
+                id="show-enrichment"
+                type="checkbox"
+                checked={showEnrichmentData}
+                onChange={() => {
+                  console.log("[Show Enrichment] Toggling from", showEnrichmentData, "to", !showEnrichmentData);
+                  setShowEnrichmentData(!showEnrichmentData);
+                }}
+                className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              />
+            </div>
           </div>
         </div>
-        <div className="bg-purple-900/50 px-3 py-1.5 border-b border-purple-700 text-sm flex items-center">
-          <div className="bg-green-400 h-2 w-2 rounded-full mr-2"></div>
-          <span>Active Agent: <span className="font-semibold">{rightAgent.name}</span></span>
+        <div className="bg-purple-900/50 px-3 py-1.5 border-b border-purple-700 text-sm flex items-center justify-between">
+          <div className="flex items-center">
+            <div className={`h-2 w-2 rounded-full mr-2 ${rightLoading.isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
+            <span>Active Agent: <span className="font-semibold">{rightAgent.name}</span></span>
+          </div>
+          {rightLoading.isLoading && (
+            <div className="text-xs font-medium text-yellow-300">{rightLoading.step}</div>
+          )}
         </div>
+        {rightLoading.isLoading && (
+          <div className="px-4 pt-3">
+            <EnrichmentProgress loadingState={rightLoading} />
+          </div>
+        )}
         <ChatPanel 
           messages={rightMessages} 
           enrichmentData={enrichmentData} 
-          showEnrichment={showEnrichmentData} 
+          showEnrichment={showEnrichmentData}
+          loadingState={rightLoading}
         />
       </div>
 
@@ -241,7 +370,7 @@ export default function ChatInterface() {
           value={input}
           onChange={setInput}
           onSubmit={handleSubmit}
-          disabled={isLoading}
+          disabled={leftLoading.isLoading || rightLoading.isLoading}
         />
       </div>
     </div>

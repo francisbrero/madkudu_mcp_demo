@@ -8,6 +8,8 @@ import {
   getAccountDetails,
   getContactDetails,
   getAIResearch,
+  getAIResearchWithRetry,
+  testAIResearchFormat,
   getDomainFromEmail,
   isEmail,
   isDomain,
@@ -324,8 +326,13 @@ export const madkuduRouter = createTRPCRouter({
               // Get AI research
               try {
                 console.log(`[MadKudu Router] Getting AI research for ${domain}`);
-                // In a real implementation, we would handle the SSE stream here
-                // For this demo, we'll simulate the research data
+                // Get real AI research with retry logic
+                const researchText = await getAIResearchWithRetry(domain);
+                extractedInfo.researchContext = researchText;
+                console.log(`[MadKudu Router] Successfully retrieved AI research for ${domain}`);
+              } catch (error) {
+                console.error("Error getting AI research:", error);
+                // Fallback to simulated data if the API fails
                 extractedInfo.researchContext = `
 ### Key Facts
 - Industry leader in ${(accountData[0].industry as string) ?? "their industry"}
@@ -340,8 +347,7 @@ export const madkuduRouter = createTRPCRouter({
 3. Sales and marketing alignment
 4. Data-driven GTM motions
 5. Customer journey optimization`;
-              } catch (error) {
-                console.error("Error getting AI research:", error);
+                console.log(`[MadKudu Router] Using fallback research data for ${domain}`);
               }
             } else {
               console.log(`[MadKudu Router] No account data found for ${domain}`);
@@ -376,8 +382,13 @@ export const madkuduRouter = createTRPCRouter({
             // Get AI research
             try {
               console.log(`[MadKudu Router] Getting AI research for ${domain}`);
-              // In a real implementation, we would handle the SSE stream here
-              // For this demo, we'll simulate the research data
+              // Get real AI research with retry logic
+              const researchText = await getAIResearchWithRetry(domain);
+              extractedInfo.researchContext = researchText;
+              console.log(`[MadKudu Router] Successfully retrieved AI research for ${domain}`);
+            } catch (error) {
+              console.error("Error getting AI research:", error);
+              // Fallback to simulated data if the API fails
               extractedInfo.researchContext = `
 ### Key Facts
 - Industry leader in ${(accountData[0].industry as string) ?? "their industry"}
@@ -392,8 +403,7 @@ export const madkuduRouter = createTRPCRouter({
 3. Sales and marketing alignment
 4. Data-driven GTM motions
 5. Customer journey optimization`;
-            } catch (error) {
-              console.error("Error getting AI research:", error);
+              console.log(`[MadKudu Router] Using fallback research data for ${domain}`);
             }
             
             // For executive outreach, we should also have some contact data
@@ -442,30 +452,28 @@ export const madkuduRouter = createTRPCRouter({
               // Get AI research
               try {
                 console.log(`[MadKudu Router] Getting AI research for ${domain}`);
-                // In a real implementation, we would handle the SSE stream here
-                // For this demo, we'll use a more detailed simulated research response for account planning
+                // Get real AI research with retry logic
+                const researchText = await getAIResearchWithRetry(domain);
+                extractedInfo.researchContext = researchText;
+                console.log(`[MadKudu Router] Successfully retrieved AI research for ${domain}`);
+              } catch (error) {
+                console.error("Error getting AI research:", error);
+                // Fallback to simulated data if the API fails
                 extractedInfo.researchContext = `
-### Company Strategy
-- ${extractedInfo.companyName || domain} is positioning as a leader in ${(accountData[0].industry as string) ?? "their industry"}
-- They've recently expanded their product line to target enterprise customers
-- Their go-to-market strategy focuses on ${accountData[0].customer_profile ? accountData[0].customer_profile : "mid-market and enterprise customers"}
-- They have a strong presence in North America with expansion plans in EMEA
+### Key Facts
+- Industry leader in ${(accountData[0].industry as string) ?? "their industry"}
+- Recent funding of $XX million (Series X)
+- Expanding into new markets in EMEA and APAC
+- Launched new product line in Q2
+- Current challenges include integration with legacy systems
 
-### Current Challenges
-1. Integration with existing tech stack
-2. Lengthy sales cycles (averaging 90+ days)
-3. High customer acquisition costs
-4. Competitive pressure from new market entrants
-5. Need for improved metrics and performance visibility
-
-### Decision Making Process
-- Buying decisions typically require ${accountData[0].employee_count && (accountData[0].employee_count as number) > 500 ? "executive approval and procurement review" : "manager and director-level approval"}
-- Security reviews and compliance requirements are significant factors
-- ROI justification is critical with current economic conditions
-- Typical buying committee includes 5-7 stakeholders
-`;
-              } catch (error: unknown) {
-                console.error("Error generating AI research:", error);
+### Sales Angles
+1. ROI acceleration
+2. Lead-to-revenue time reduction
+3. Sales and marketing alignment
+4. Data-driven GTM motions
+5. Customer journey optimization`;
+                console.log(`[MadKudu Router] Using fallback research data for ${domain}`);
               }
               
               // Add simulated product usage and activation data
@@ -546,29 +554,28 @@ export const madkuduRouter = createTRPCRouter({
               // Get AI research
               try {
                 console.log(`[MadKudu Router] Getting AI research for ${domain}`);
-                // For this demo, we'll use a more detailed simulated research response
+                // Get real AI research with retry logic
+                const researchText = await getAIResearchWithRetry(domain);
+                extractedInfo.researchContext = researchText;
+                console.log(`[MadKudu Router] Successfully retrieved AI research for ${domain}`);
+              } catch (error) {
+                console.error("Error getting AI research:", error);
+                // Fallback to simulated data if the API fails
                 extractedInfo.researchContext = `
-### Company Strategy
-- ${extractedInfo.companyName || domain} is positioning as a leader in ${(accountData[0].industry as string) ?? "their industry"}
-- They've recently expanded their product line to target enterprise customers
-- Their go-to-market strategy focuses on ${accountData[0].customer_profile ? accountData[0].customer_profile : "mid-market and enterprise customers"}
-- They have a strong presence in North America with expansion plans in EMEA
+### Key Facts
+- Industry leader in ${(accountData[0].industry as string) ?? "their industry"}
+- Recent funding of $XX million (Series X)
+- Expanding into new markets in EMEA and APAC
+- Launched new product line in Q2
+- Current challenges include integration with legacy systems
 
-### Current Challenges
-1. Integration with existing tech stack
-2. Lengthy sales cycles (averaging 90+ days)
-3. High customer acquisition costs
-4. Competitive pressure from new market entrants
-5. Need for improved metrics and performance visibility
-
-### Decision Making Process
-- Buying decisions typically require ${accountData[0].employee_count && (accountData[0].employee_count as number) > 500 ? "executive approval and procurement review" : "manager and director-level approval"}
-- Security reviews and compliance requirements are significant factors
-- ROI justification is critical with current economic conditions
-- Typical buying committee includes 5-7 stakeholders
-`;
-              } catch (error: unknown) {
-                console.error("Error generating AI research:", error);
+### Sales Angles
+1. ROI acceleration
+2. Lead-to-revenue time reduction
+3. Sales and marketing alignment
+4. Data-driven GTM motions
+5. Customer journey optimization`;
+                console.log(`[MadKudu Router] Using fallback research data for ${domain}`);
               }
               
               // Add simulated product usage and activation data

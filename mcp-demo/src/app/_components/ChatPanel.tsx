@@ -1,18 +1,34 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Message } from "./ChatInterface";
+import { Message, LoadingState } from "./ChatInterface";
 import ReactMarkdown from "react-markdown";
 import EnrichmentDataDisplay from "./EnrichmentDataDisplay";
+import StatusIndicator, { TypingIndicator } from "./StatusIndicator";
 
 type ChatPanelProps = {
   messages: Message[];
   enrichmentData?: Record<string, unknown>;
   showEnrichment?: boolean;
+  loadingState?: LoadingState;
 };
 
-export default function ChatPanel({ messages, enrichmentData = {}, showEnrichment = false }: ChatPanelProps) {
+export default function ChatPanel({ 
+  messages, 
+  enrichmentData = {}, 
+  showEnrichment = false,
+  loadingState = { isLoading: false }
+}: ChatPanelProps) {
   const messageEndRef = useRef<HTMLDivElement>(null);
+
+  // Debug: Log when the ChatPanel renders with enrichment data
+  useEffect(() => {
+    console.log("[ChatPanel] Rendering with props:", { 
+      messagesCount: messages.length,
+      enrichmentDataKeys: Object.keys(enrichmentData),
+      showEnrichment
+    });
+  }, [messages, enrichmentData, showEnrichment]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -50,9 +66,25 @@ export default function ChatPanel({ messages, enrichmentData = {}, showEnrichmen
             </div>
           ))}
           
+          {/* Show typing indicator when streaming/loading */}
+          {loadingState.isLoading && messages.length > 0 && messages[messages.length - 1].role === "user" && (
+            <TypingIndicator />
+          )}
+          
           {/* Show enrichment data if available and enabled */}
           {showEnrichment && Object.keys(enrichmentData).length > 0 && (
-            <EnrichmentDataDisplay enrichmentData={enrichmentData} />
+            <div>
+              {console.log("[ChatPanel] Rendering EnrichmentDataDisplay with:", { 
+                keys: Object.keys(enrichmentData),
+                showEnrichment 
+              })}
+              <EnrichmentDataDisplay enrichmentData={enrichmentData} />
+            </div>
+          )}
+          
+          {/* Loading progress indicator for the right panel */}
+          {loadingState.isLoading && loadingState.step && (
+            <StatusIndicator loadingState={loadingState} />
           )}
           
           <div ref={messageEndRef} />
