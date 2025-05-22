@@ -1,0 +1,12 @@
+{
+  "name": "madkudu_mcp_demo",
+  "private": true,
+  "workspaces": [
+    "mcp-demo"
+  ],
+  "scripts": {
+    "build": "cd mcp-demo && pnpm build",
+    "dev": "cd mcp-demo && pnpm dev",
+    "start": "cd mcp-demo && pnpm start"
+  }
+} 
