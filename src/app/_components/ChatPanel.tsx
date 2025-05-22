@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Message, LoadingState } from "./ChatInterface";
+import type { Message, LoadingState } from "./ChatInterface";
 import ReactMarkdown from "react-markdown";
 import EnrichmentDataDisplay from "./EnrichmentDataDisplay";
 import StatusIndicator, { TypingIndicator } from "./StatusIndicator";
@@ -70,7 +70,7 @@ export default function ChatPanel({
           
           {/* Show typing indicator when streaming/loading */}
           {loading?.isLoading && messages.length > 0 && 
-           messages[messages.length - 1].role === "user" && 
+           messages[messages.length - 1]?.role === "user" && 
            loading?.step?.includes("Generating") && (
             <TypingIndicator />
           )}

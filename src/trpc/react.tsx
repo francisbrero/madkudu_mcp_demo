@@ -58,6 +58,7 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
           // Use regular http link for subscriptions (SSE)
           true: httpLink({
             url: baseUrl + "/api/trpc",
+            transformer: SuperJSON,
           }),
           // Use batch link for mutations and queries
           false: httpBatchStreamLink({

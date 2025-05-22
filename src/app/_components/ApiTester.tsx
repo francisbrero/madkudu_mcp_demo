@@ -479,7 +479,7 @@ export default function ApiTester() {
         .split('\n');
       
       // Create a container for the formatted content
-      const formattedContent: JSX.Element[] = [];
+      const formattedContent: React.ReactNode[] = [];
       let currentParagraph: string[] = [];
       let listItems: string[] = [];
       let isInList = false;
@@ -513,8 +513,8 @@ export default function ApiTester() {
           }
           
           // Add the header
-          const level = headerMatch[1].length;
-          const headerText = headerMatch[2];
+          const level = headerMatch[1]!.length;
+          const headerText = headerMatch[2]!;
           const formattedText = formatMarkdownLinks(headerText);
           
           switch (level) {
@@ -713,7 +713,7 @@ export default function ApiTester() {
         </div>
       )}
       
-      {result && !isLoading && (
+      {Boolean(result) && !isLoading && (
         <div className="mb-6">
           <div className="flex border-b border-zinc-700 mb-4">
             <button
@@ -734,7 +734,10 @@ export default function ApiTester() {
           
           <div className="bg-zinc-800 border border-zinc-700 rounded-md p-4 overflow-x-auto">
             {activeTab === "formatted" ? (
-              renderFormattedResearch()
+              resultType === "contact" ? renderFormattedContactDetails() :
+              resultType === "account" ? renderFormattedAccountDetails() :
+              resultType === "research" ? renderFormattedResearch() :
+              <p className="text-gray-400">No formatted view available</p>
             ) : (
               <pre className="text-sm text-gray-300 whitespace-pre-wrap">
                 {JSON.stringify(result, null, 2)}

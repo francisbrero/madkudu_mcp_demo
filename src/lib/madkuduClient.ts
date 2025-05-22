@@ -103,7 +103,9 @@ export const getAIResearch = async (domain: string): Promise<ReadableStream | nu
 
 // Helper to extract domain from an email
 export const getDomainFromEmail = (email: string): string => {
-  return email.split('@')[1];
+  const parts = email.split('@');
+  if (parts.length < 2) return '';
+  return parts[1]!;
 };
 
 // Helper to check if string is an email

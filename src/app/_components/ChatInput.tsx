@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, KeyboardEvent, FormEvent, ChangeEvent } from "react";
-import { Agent } from "./ChatInterface";
+import { useState, useEffect } from "react";
+import type { KeyboardEvent, FormEvent, ChangeEvent } from "react";
+import type { Agent } from "./ChatInterface";
 
 type ChatInputProps = {
   value: string;
@@ -20,7 +21,7 @@ export default function ChatInput({
   selectedAgent,
   placeholder = "Type your message here...",
 }: ChatInputProps) {
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       const form = e.currentTarget.form;

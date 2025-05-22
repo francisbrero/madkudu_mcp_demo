@@ -9,7 +9,6 @@ import {
   getContactDetails,
   getAIResearch,
   getAIResearchWithRetry,
-  testAIResearchFormat,
   getDomainFromEmail,
   isEmail,
   isDomain,
@@ -60,15 +59,16 @@ const extractEntityFromQuery = (query: string): { type: 'domain' | 'email' | 'co
   if (domainMatches) {
     // Filter out common words that might match domain pattern but aren't domains
     const commonWordsThatLookLikeDomains = ['about.com', 'i.e.', 'e.g.'];
-    const filteredDomains = domainMatches.filter(domain => 
-      !commonWordsThatLookLikeDomains.includes(domain.toLowerCase()) &&
-      domain.includes('.') && 
-      domain.split('.').length >= 2 &&
-      domain.split('.')[1].length >= 2
-    );
+    const filteredDomains = domainMatches.filter(domain => {
+      const parts = domain.split('.');
+      return !commonWordsThatLookLikeDomains.includes(domain.toLowerCase()) &&
+        domain.includes('.') && 
+        parts.length >= 2 &&
+        parts[1] && parts[1].length >= 2;
+    });
     
     if (filteredDomains.length > 0) {
-      return { type: 'domain', value: filteredDomains[0] };
+      return { type: 'domain', value: filteredDomains[0]! };
     }
   }
   
@@ -1203,8 +1203,13 @@ When asked about companies or organizations, try to provide relevant, factual in
 
       // Add system instruction to the beginning of the messages
       const messagesWithSystem = [
-        { role: "system", content: enhancedPrompt },
-        ...input.messages,
+        { role: "system" as const, content: enhancedPrompt },
+        ...input.messages.map(msg => ({
+          role: msg.role === "user" ? "user" as const : 
+                msg.role === "assistant" ? "assistant" as const : 
+                "system" as const,
+          content: msg.content
+        })),
       ];
 
       console.log(`[MadKudu Router] Calling OpenAI API with enhanced prompt`);

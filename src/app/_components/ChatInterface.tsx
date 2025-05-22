@@ -89,12 +89,12 @@ export default function ChatInterface() {
       setAgents(formattedAgents);
       
       // Set the first agent as selected if none selected yet
-      if (!selectedAgent) {
-        setSelectedAgent(formattedAgents[0]);
+      if (!selectedAgent && formattedAgents.length > 0) {
+        setSelectedAgent(formattedAgents[0] as Agent);
       }
     } else if (defaultAgents.length > 0 && !selectedAgent) {
       // Fallback to default agents if none from API
-      setSelectedAgent(defaultAgents[0]);
+      setSelectedAgent(defaultAgents[0] as Agent);
     }
   }, [agentsData, selectedAgent]);
   

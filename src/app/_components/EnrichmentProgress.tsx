@@ -1,6 +1,6 @@
 "use client";
 
-import { LoadingState } from "./ChatInterface";
+import type { LoadingState } from "./ChatInterface";
 
 type EnrichmentProgressProps = {
   loadingState?: LoadingState;

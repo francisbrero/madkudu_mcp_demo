@@ -157,8 +157,13 @@ export const openaiRouter = createTRPCRouter({
       
       // Add system instruction to the beginning of the messages
       const messagesWithSystem = [
-        { role: "system", content: systemInstruction },
-        ...input.messages,
+        { role: "system" as const, content: systemInstruction },
+        ...input.messages.map(msg => ({
+          role: msg.role === "user" ? "user" as const : 
+                msg.role === "assistant" ? "assistant" as const : 
+                "system" as const,
+          content: msg.content
+        })),
       ];
 
       // Log the system prompt with color highlighting
@@ -193,8 +198,13 @@ export const openaiRouter = createTRPCRouter({
       
       // Add system instruction to the beginning of the messages
       const messagesWithSystem = [
-        { role: "system", content: systemInstruction },
-        ...input.messages,
+        { role: "system" as const, content: systemInstruction },
+        ...input.messages.map(msg => ({
+          role: msg.role === "user" ? "user" as const : 
+                msg.role === "assistant" ? "assistant" as const : 
+                "system" as const,
+          content: msg.content
+        })),
       ];
 
       // Log the system prompt with color highlighting
