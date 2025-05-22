@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm build --no-lint",
+  "buildCommand": "prisma generate && pnpm build --no-lint",
   "outputDirectory": ".next",
   "installCommand": "pnpm install",
   "framework": "nextjs"
