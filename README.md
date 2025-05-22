@@ -22,6 +22,8 @@ This demo provides a side-by-side comparison between standard GPT-4o responses a
 
 ## Technology Stack
 
+This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+
 - **Frontend**: React, Next.js, TailwindCSS
 - **API Integration**: tRPC for type-safe API calls
 - **AI Integration**: OpenAI API and MadKudu API
@@ -38,14 +40,12 @@ This demo provides a side-by-side comparison between standard GPT-4o responses a
 1. Clone this repository
 2. Install dependencies:
    ```
-   cd mcp-demo
    pnpm install
    ```
 3. Configure environment variables in `.env`
 4. Set up the database:
    ```
-   npx prisma generate
-   npx prisma db push
+   pnpm db:push
    ```
 5. Start the development server:
    ```
@@ -53,9 +53,20 @@ This demo provides a side-by-side comparison between standard GPT-4o responses a
    ```
 6. Open [http://localhost:3000](http://localhost:3000) in your browser
 
+## Learn More
+
+To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+
+- [Documentation](https://create.t3.gg/)
+- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available)
+
 ## Contributing
 
 This project is a demonstration of MadKudu capabilities. For feature requests or bug reports, please contact the MadKudu team.
+
+## Deployment
+
+Follow the deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
 
 ## License
 

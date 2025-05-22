@@ -1,6 +1,8 @@
 {
-  "buildCommand": "cd mcp-demo && pnpm build",
-  "outputDirectory": "mcp-demo/.next",
-  "installCommand": "cd mcp-demo && pnpm install",
-  "framework": "nextjs"
+  "buildCommand": "pnpm build",
+  "outputDirectory": ".next",
+  "installCommand": "pnpm install",
+  "typescript": {
+    "tsconfigPath": "tsconfig.json"
+  }
 } 
