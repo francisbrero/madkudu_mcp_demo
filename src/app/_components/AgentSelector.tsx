@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Agent } from "./ChatInterface";
+import type { Agent } from "./ChatInterface";
 
 type AgentSelectorProps = {
   agents: Agent[];
