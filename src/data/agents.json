@@ -8,7 +8,7 @@
       "lookupAccount",
       "lookupPerson",
       "getAIResearch",
-      "getContactDetails"
+      "getPersonDetails"
     ],
     "inputType": "email",
     "format": "markdown",

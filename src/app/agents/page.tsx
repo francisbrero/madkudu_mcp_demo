@@ -1,34 +1,30 @@
 import { HydrateClient } from "~/trpc/server";
 import AgentBuilder from "../_components/AgentBuilder";
-import Link from "next/link";
+import { Bot } from "lucide-react";
 
 export default function AgentsPage() {
   return (
     <HydrateClient>
-      <main className="min-h-screen bg-madkudu-gradient text-white">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center space-x-4 mb-8">
-            <Link 
-              href="/"
-              className="text-blue-300 hover:text-blue-200 transition-colors"
-            >
-              Home
-            </Link>
-            <span className="text-gray-400">/</span>
-            <span className="text-white font-medium">Agents</span>
+      <div className="container mx-auto px-4 flex flex-col h-full overflow-hidden">
+        <div className="py-6 flex-shrink-0">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-xl">
+              <Bot className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white mb-1">
+                Agent Builder
+              </h1>
+              <p className="text-xs text-white/70">
+                Create and manage custom AI agents
+              </p>
+            </div>
           </div>
-          
-          <h1 className="text-4xl font-extrabold tracking-tight sm:text-[3rem] mb-8">
-            Agent Builder
-          </h1>
-          
-          <p className="text-lg text-gray-200 mb-8">
-            Create, edit, and manage agents that can be used in the chat interface.
-          </p>
-          
+        </div>
+        <div className="flex-1 min-h-0">
           <AgentBuilder />
         </div>
-      </main>
+      </div>
     </HydrateClient>
   );
 } 
