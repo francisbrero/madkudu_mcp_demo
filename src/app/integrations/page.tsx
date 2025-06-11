@@ -1,6 +1,5 @@
 "use client";
 import Image from "next/image";
-import { HydrateClient } from "~/trpc/server";
 import { Puzzle } from "lucide-react";
 
 const integrations = [
@@ -15,8 +14,7 @@ export default function IntegrationsPage() {
   const cursorInstallUrl = "cursor://anysphere.cursor-deeplink/mcp/install?name=MadMCP&config=eyJ1cmwiOiJodHRwczovL21jcC5tYWRrdWR1LmNvbS97QVBJX0tFWX0vbWNwIn0=";
 
   return (
-    <HydrateClient>
-      <div className="container mx-auto px-4 py-6">
+    <div className="container mx-auto px-4 py-6">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-xl">
             <Puzzle className="w-6 h-6 text-white" />
@@ -113,6 +111,5 @@ export default function IntegrationsPage() {
           ))}
         </div>
       </div>
-    </HydrateClient>
   );
 } 
