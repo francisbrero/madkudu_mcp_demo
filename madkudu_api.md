@@ -123,7 +123,7 @@ x-api-key: YOUR_API_KEY
 
 ---
 
-## 📊 Account, Lead, and Contact Details
+## 📊 Account, Lead, and Person Details
 
 ### 🧾 Get Account Details
 
@@ -145,7 +145,7 @@ Returns lead-level fit score, buying intent, and associated account ID.
 
 ---
 
-### 🧾 Get Contact Details
+### 🧾 Get Person Details
 
 ```http
 GET /contacts/{contact_id}
