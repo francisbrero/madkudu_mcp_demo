@@ -6,75 +6,23 @@
 }
 
 @layer base {
-  /* Default (Dark Theme) */
   :root {
-    /* MadKudu Brand Colors - consistent across themes */
-    --color-primary: 30, 119, 204; /* primary blue #1E77CC */
-    --color-primary-lighter: 60, 149, 234; /* lighter primary for emphasis */
-    --color-primary-darker: 25, 99, 170; /* darker primary for hover states */
-    --color-secondary: 77, 204, 189; /* turquoise #4DCCBD */
-    
-    /* Dark Theme Colors */
-    --color-background: 15, 23, 42; /* Dark slate */
-    --color-background-deep: 8, 16, 35; /* Deeper background */
-    --color-background-deeper: 3, 7, 18; /* Deepest background */
-    --color-surface: 30, 41, 59; /* Panel background */
-    --color-surface-soft: 24, 33, 49; /* Softer surface */
-    --color-surface-darker: 20, 28, 44; /* Darker surface for hover */
-    --color-border: 51, 65, 85; /* Border color */
-    --color-text: 255, 255, 255; /* Primary text */
-    --color-text-muted: 156, 163, 175; /* Muted text */
-    --color-text-subtle: 107, 114, 128; /* Subtle text */
-  }
-
-  /* Light Theme */
-  .light {
-    --color-background: 255, 255, 255; /* Pure white */
-    --color-background-deep: 249, 250, 251; /* Light gray */
-    --color-background-deeper: 243, 244, 246; /* Deeper light gray */
-    --color-surface: 255, 255, 255; /* White panels */
-    --color-surface-soft: 249, 250, 251; /* Soft gray */
-    --color-surface-darker: 229, 231, 235; /* Darker surface for hover */
-    --color-border: 209, 213, 219; /* Light border */
-    --color-text: 17, 24, 39; /* Dark text */
-    --color-text-muted: 75, 85, 99; /* Muted dark text */
-    --color-text-subtle: 156, 163, 175; /* Subtle dark text */
+    --color-primary: 108, 99, 255; /* MadKudu purple #6C63FF */
+    --color-primary-dark: 93, 85, 224;
+    --color-secondary: 79, 70, 229; /* Indigo shade */
+    --color-background: 15, 23, 42; /* Dark slate for dark mode */
+    --color-surface: 30, 41, 59; /* Slate for panels */
+    --color-text: 255, 255, 255;
   }
 }
 
 @layer components {
   .bg-madkudu-gradient {
-    background: linear-gradient(to bottom, rgb(var(--color-background)), rgb(var(--color-background-deep)));
+    background: linear-gradient(to bottom, rgb(var(--color-background)), rgb(21, 22, 44));
   }
   
   .bg-panel {
     background: rgb(var(--color-surface));
     border-radius: 0.5rem;
-  }
-
-  /* Custom scrollbar styles */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-  }
-
-  /* Line clamp utilities */
-  .line-clamp-2 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
   }
 }

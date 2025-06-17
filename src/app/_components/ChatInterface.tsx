@@ -60,61 +60,6 @@ const defaultAgents: Agent[] = [
   },
 ];
 
-// Agent-specific prompt suggestions
-const agentPrompts: Record<string, Array<{ text: string; description: string; emoji: string }>> = {
-  "executive-outreach": [
-    {
-      text: "Draft personalized outreach to francis@madkudu.com",
-      description: "AI email using real activity data & company context",
-      emoji: "📧"
-    },
-    {
-      text: "Write follow-up email to paul@madkudu.com about their recent demo",
-      description: "Personalized follow-up based on engagement history", 
-      emoji: "🔄"
-    },
-    {
-      text: "Create executive pitch for CTO at stripe.com",
-      description: "High-level value proposition for technical leaders",
-      emoji: "🎯"
-    }
-  ],
-  "account-plan": [
-    {
-      text: "Research madkudu.com account with live data",
-      description: "Company profile, top users, recent activities & news",
-      emoji: "🏢"
-    },
-    {
-      text: "Create strategic account plan for gong.io",
-      description: "Multi-touch campaign with prioritized actions",
-      emoji: "📋"
-    },
-    {
-      text: "Analyze growth opportunities at salesforce.com",
-      description: "Expansion strategy based on usage patterns",
-      emoji: "📈"
-    }
-  ],
-  "agent3": [
-    {
-      text: "Show recent activities for stripe.com",
-      description: "Live tracking data & user engagement insights",
-      emoji: "📊"
-    },
-    {
-      text: "Prepare QBR summary for madkudu.com account",
-      description: "Usage analytics and performance metrics",
-      emoji: "📈"
-    },
-    {
-      text: "Analyze user engagement trends for francis@madkudu.com",
-      description: "Individual activity patterns and growth signals",
-      emoji: "🔍"
-    }
-  ]
-};
-
 export default function ChatInterface() {
   const [input, setInput] = useState("");
   const [leftMessages, setLeftMessages] = useState<Message[]>([]);
@@ -160,30 +105,6 @@ export default function ChatInterface() {
     setRightMessages([]);
     setEnrichmentData({});
   };
-
-  const handleSendMessage = (message: string) => {
-    // A useEffect will trigger the submission.
-    // This ensures that the `input` state is updated before `handleSubmit` is called.
-    setInput(message);
-  };
-
-  const handleClearChat = () => {
-    setLeftMessages([]);
-    setRightMessages([]);
-    setEnrichmentData({});
-    setLeftLoading({ isLoading: false });
-    setRightLoading({ isLoading: false });
-  };
-
-  useEffect(() => {
-    // This effect runs when `input` changes, and triggers form submission.
-    // It's used for both the initial prompt and subsequent messages.
-    if (input && !leftLoading.isLoading && !rightLoading.isLoading) {
-      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-      handleSubmit(fakeEvent);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -346,118 +267,78 @@ export default function ChatInterface() {
       console.error("Error submitting:", error instanceof Error ? error.message : String(error));
       setLeftLoading({ isLoading: false });
       setRightLoading({ isLoading: false });
-    } finally {
-      setInput("");
     }
+
+    setInput("");
   };
 
-  // Check if there's an ongoing conversation
-  const hasMessages = leftMessages.length > 0 || rightMessages.length > 0;
-
   return (
-    <div className="flex flex-col h-full bg-madkudu-gradient">
-      {isLoadingAgents ? (
-        <div className="flex-grow flex items-center justify-center">
-          <p className="text-white">Loading Agents...</p>
+    <div className="flex flex-col h-[calc(100vh-10rem)]">
+      {/* Agent Selector moved to top */}
+      <div className="mb-4">
+        {isLoadingAgents ? (
+          <div className="text-gray-400">Loading agents...</div>
+        ) : selectedAgent ? (
+          <AgentSelector
+            agents={agents}
+            selectedAgent={selectedAgent}
+            onSelectAgent={handleAgentChange}
+            label="Select Agent"
+          />
+        ) : (
+          <div className="text-gray-400">No agents available. Please create some in the Agent Builder.</div>
+        )}
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow overflow-hidden">
+        {/* Left Panel: GPT-4o Only */}
+        <div className="flex flex-col bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+          <div className="p-4 bg-gray-800 border-b border-gray-700">
+            <h2 className="text-xl font-bold">GPT-4o Only</h2>
+            <p className="text-sm text-gray-400">
+              Standard GPT without any enrichment
+            </p>
+          </div>
+          <ChatPanel
+            messages={leftMessages}
+            loading={leftLoading}
+            className="flex-grow"
+          />
         </div>
-      ) : (
-        <>
-          <header className="bg-transparent p-3 shadow-md z-10">
-            {leftMessages.length === 0 && rightMessages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-[400px] max-w-4xl mx-auto px-4">
-                <div className="w-full max-w-2xl">
-                  <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl p-5 shadow-2xl">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
-                          <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <span className="text-white font-medium text-sm">Agent:</span>
-                      </div>
-                      <AgentSelector
-                        agents={agents}
-                        selectedAgent={selectedAgent || agents[0]!}
-                        onSelectAgent={handleAgentChange}
-                        label=""
-                      />
-                    </div>
-                    <ChatInput
-                      onSendMessage={handleSendMessage}
-                      isLoading={leftLoading.isLoading || rightLoading.isLoading}
-                      isInitialPrompt={true}
-                    />
-                    <div className="mt-3 text-center">
-                      <button
-                        onClick={() => handleSendMessage("Draft email for exec at Snyk.io")}
-                        className="text-white/60 hover:text-white/80 transition-colors duration-200 text-sm"
-                      >
-                        Try: <span className="text-white/60 hover:text-white/80">"Draft email for exec at Snyk.io"</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-4">
-                <AgentSelector
-                  agents={agents}
-                  selectedAgent={selectedAgent || agents[0]!}
-                  onSelectAgent={handleAgentChange}
-                  label="Select Agent:"
-                />
-                <button
-                  onClick={handleClearChat}
-                  className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white/80 rounded-xl border border-white/20 hover:bg-white/20 hover:text-white transition-all duration-200 text-sm font-medium"
-                >
-                  Clear Chat
-                </button>
+
+        {/* Right Panel: GPT-4o + MadKudu */}
+        <div className="flex flex-col bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+          <div className="p-4 bg-gray-800 border-b border-gray-700">
+            <h2 className="text-xl font-bold">GPT-4o + MadKudu</h2>
+            <p className="text-sm text-gray-400">
+              Enhanced with MadKudu enrichment
+            </p>
+          </div>
+          <div className="flex-grow flex flex-col overflow-hidden">
+            <ChatPanel
+              messages={rightMessages}
+              loading={rightLoading}
+              className="flex-grow"
+            />
+            {showEnrichmentData && Object.keys(enrichmentData).length > 0 && (
+              <div className="p-4 bg-gray-800 border-t border-gray-700 overflow-y-auto max-h-[30vh]">
+                <EnrichmentProgress enrichmentData={enrichmentData} />
               </div>
             )}
-          </header>
-          <main className="flex-1 overflow-hidden p-4 grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
-            <div className="flex flex-col rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 shadow-2xl overflow-hidden">
-              <div className="p-3 flex-shrink-0 border-b border-white/10">
-                <h2 className="text-base font-bold text-white">GPT-4o Only</h2>
-                <p className="text-xs text-white/70 mt-0.5">Standard GPT without any enrichment</p>
-              </div>
-              <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                <ChatPanel
-                  messages={leftMessages}
-                  loading={leftLoading}
-                  className="p-0"
-                />
-              </div>
-            </div>
-            <div className="flex flex-col rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 shadow-2xl overflow-hidden">
-              <div className="p-3 flex-shrink-0 border-b border-white/10">
-                <h2 className="text-base font-bold text-white">GPT-4o + MadKudu</h2>
-                <p className="text-xs text-white/70 mt-0.5">Enhanced with MadKudu enrichment</p>
-              </div>
-              <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                <ChatPanel
-                  messages={rightMessages}
-                  loading={rightLoading}
-                  enrichmentData={enrichmentData}
-                  showEnrichment={showEnrichmentData}
-                  className="p-0"
-                />
-              </div>
-            </div>
-          </main>
-          {hasMessages && (
-            <footer className="p-3 bg-transparent">
-              <div className="w-full max-w-4xl mx-auto">
-                <ChatInput
-                  onSendMessage={handleSendMessage}
-                  isLoading={leftLoading.isLoading || rightLoading.isLoading}
-                />
-              </div>
-            </footer>
-          )}
-        </>
-      )}
+          </div>
+        </div>
+      </div>
+
+      {/* Shared Input Bar */}
+      <div className="mt-6">
+        <ChatInput 
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onSubmit={handleSubmit}
+          isLoading={leftLoading.isLoading || rightLoading.isLoading}
+          selectedAgent={selectedAgent}
+        />
+      </div>
     </div>
   );
 } 

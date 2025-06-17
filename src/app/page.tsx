@@ -4,29 +4,14 @@ import ChatInterface from "./_components/ChatInterface";
 export default function Home() {
   return (
     <HydrateClient>
-      <div className="container mx-auto px-4 flex flex-col h-full overflow-hidden">
-        <div className="py-6 flex-shrink-0">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-xl">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white mb-1">
-                Playground
-              </h1>
-              <p className="text-xs text-white/70">
-                See the impact of giving an LLM the context of your GTM data
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="flex-1 min-h-0">
+      <main className="min-h-screen bg-madkudu-gradient text-white">
+        <div className="container mx-auto px-4 py-6">
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-[3rem] text-center">
+            MadKudu MCP Demo
+          </h1>
           <ChatInterface />
         </div>
-
-      </div>
+      </main>
     </HydrateClient>
   );
 }

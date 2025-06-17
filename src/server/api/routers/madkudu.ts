@@ -6,16 +6,12 @@ import {
   lookupPerson,
   lookupAccount,
   getAccountDetails,
-  getPersonDetails,
+  getContactDetails,
   getAIResearch,
   getAIResearchWithRetry,
   getDomainFromEmail,
   isEmail,
   isDomain,
-  getPersonActivities,
-  discoverPersons,
-  getAccountActivities,
-  getAccountTopUsers,
 } from "~/lib/madkuduClient";
 import { PrismaClient } from "@prisma/client";
 
@@ -123,7 +119,7 @@ const getEnhancedPromptForExecutiveOutreach = (enrichmentData: Record<string, st
   }
   
   // Format contact context using person data and additional details
-          if (enrichmentData.contactContext || enrichmentData.personDetails) {
+  if (enrichmentData.contactContext || enrichmentData.contactDetails) {
     contactContext = "";
     
     if (enrichmentData.contactContext) {
@@ -143,9 +139,9 @@ const getEnhancedPromptForExecutiveOutreach = (enrichmentData: Record<string, st
       }
     }
     
-            if (enrichmentData.personDetails) {
-          contactContext += `### Additional Person Details\n${enrichmentData.personDetails}\n\n`;
-        }
+    if (enrichmentData.contactDetails) {
+      contactContext += `### Additional Contact Details\n${enrichmentData.contactDetails}\n\n`;
+    }
   }
 
   return `You are Francis Brero, CPO at MadKudu. You're preparing a first outreach to this executive.
@@ -469,14 +465,14 @@ export const madkuduRouter = createTRPCRouter({
             // Try to fetch additional contact details if there's a contactId
             if (personData[0].id) {
               try {
-                console.log(`[MadKudu Router] Getting person details for: ${userInput}`);
-                const personDetails = await getPersonDetails({ email: userInput });
-                if (personDetails) {
-                  extractedInfo.personDetails = JSON.stringify(personDetails, null, 2);
-                  console.log(`[MadKudu Router] Found additional person details`);
+                console.log(`[MadKudu Router] Getting contact details for ID: ${personData[0].id}`);
+                const contactDetails = await getContactDetails(personData[0].id);
+                if (contactDetails) {
+                  extractedInfo.contactDetails = JSON.stringify(contactDetails, null, 2);
+                  console.log(`[MadKudu Router] Found additional contact details`);
                 }
               } catch (error) {
-                console.error("Error getting person details:", error);
+                console.error("Error getting contact details:", error);
               }
             }
             
@@ -793,16 +789,16 @@ export const madkuduRouter = createTRPCRouter({
               
               // Try to fetch additional contact details if there's a contactId
               if (personData[0].id) {
-                              try {
-                console.log(`[MadKudu Router] Getting person details for: ${userInput}`);
-                const personDetails = await getPersonDetails({ email: userInput });
-                if (personDetails) {
-                  extractedInfo.personDetails = JSON.stringify(personDetails, null, 2);
-                  console.log(`[MadKudu Router] Found additional person details`);
+                try {
+                  console.log(`[MadKudu Router] Getting contact details for ID: ${personData[0].id}`);
+                  const contactDetails = await getContactDetails(personData[0].id);
+                  if (contactDetails) {
+                    extractedInfo.contactDetails = JSON.stringify(contactDetails, null, 2);
+                    console.log(`[MadKudu Router] Found additional contact details`);
+                  }
+                } catch (error: unknown) {
+                  console.error("Error getting contact details:", error);
                 }
-              } catch (error: unknown) {
-                console.error("Error getting person details:", error);
-              }
               }
             }
             
@@ -1302,102 +1298,41 @@ When asked about companies or organizations, try to provide relevant, factual in
     }),
 
   getAccountDetails: publicProcedure
-    .input(z.object({ domain: z.string() }))
+    .input(z.object({ accountId: z.string() }))
     .mutation(async ({ input }) => {
-      console.log(`[MadKudu Router] Getting account details for domain: ${input.domain}`);
-      return getAccountDetails(input);
-    }),
-
-  getPersonDetails: publicProcedure
-    .input(z.object({ email: z.string().email() }))
-    .mutation(async ({ input }) => {
-      console.log(`[MadKudu Router] Getting person details for email: ${input.email}`);
-      return getPersonDetails(input);
-    }),
-
-  getAIResearch: publicProcedure
-    .input(z.object({ domain: z.string() }))
-    .mutation(async ({ input }) => getAIResearch(input.domain)),
-
-  discoverPersons: publicProcedure
-    .input(
-      z.object({
-        provider: z.enum(["apollo", "zoominfo", "cognism"]),
-        company_domain: z.string().optional(),
-        title: z.string().optional(),
-        seniority: z.string().optional(),
-        country: z.string().optional(),
-      })
-    )
-    .mutation(async ({ input }) => {
+      console.log(`[MadKudu API Test] Getting account details for ID: ${input.accountId}`);
       try {
-        console.log('[MadKudu Router] Discover persons input:', input);
-        
-        // Pass all parameters to the updated API function
-        return discoverPersons({ 
-          company_domain: input.company_domain,
-          provider: input.provider,
-          title: input.title,
-          seniority: input.seniority,
-          country: input.country
-        });
+        const result = await getAccountDetails(input.accountId);
+        return result;
       } catch (error) {
-        console.error('Error in discoverPersons:', error);
+        console.error(`[MadKudu API Test] Error getting account details:`, error);
         throw error;
       }
     }),
 
-  getPersonActivities: publicProcedure
-    .input(z.object({ email: z.string() }))
+  getContactDetails: publicProcedure
+    .input(z.object({ contactId: z.string() }))
     .mutation(async ({ input }) => {
-      console.log('[MadKudu Router] Person activities input:', input);
-      
-      // Try MCP function first since direct API endpoints aren't working
+      console.log(`[MadKudu API Test] Getting contact details for ID: ${input.contactId}`);
       try {
-        // Use the MCP server to call the person activities function
-        const mcpResponse = await fetch('http://localhost:3001/mcp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            method: 'tools/call',
-            params: {
-              name: 'madkudu-person-activities',
-              arguments: { email: input.email }
-            }
-          })
-        });
-        
-        if (mcpResponse.ok) {
-          const mcpData = await mcpResponse.json();
-          console.log('[MadKudu Router] MCP response:', mcpData);
-          
-          // Parse the MCP response
-          if (mcpData.content?.[0]?.text) {
-            try {
-              return JSON.parse(mcpData.content[0].text);
-            } catch (parseError) {
-              console.log('[MadKudu Router] MCP response not JSON, returning as-is');
-              return { data: mcpData.content[0].text };
-            }
-          }
-          
-          return mcpData;
-        } else {
-          console.log('[MadKudu Router] MCP call failed, falling back to direct API');
-        }
-      } catch (mcpError) {
-        console.log('[MadKudu Router] MCP error, falling back to direct API:', mcpError);
+        const result = await getContactDetails(input.contactId);
+        return result;
+      } catch (error) {
+        console.error(`[MadKudu API Test] Error getting contact details:`, error);
+        throw error;
       }
-      
-      // Fallback to direct API (which we know is failing)
-      return getPersonActivities(input);
     }),
 
-  getAccountActivities: publicProcedure
+  getAIResearch: publicProcedure
     .input(z.object({ domain: z.string() }))
-    .mutation(async ({ input }) => getAccountActivities(input)),
-
-  getAccountTopUsers: publicProcedure
-    .input(z.object({ domain: z.string() }))
-    .mutation(async ({ input }) => getAccountTopUsers(input)),
+    .mutation(async ({ input }) => {
+      console.log(`[MadKudu API Test] Getting AI research for domain: ${input.domain}`);
+      try {
+        const result = await getAIResearchWithRetry(input.domain);
+        return result;
+      } catch (error) {
+        console.error(`[MadKudu API Test] Error getting AI research:`, error);
+        throw error;
+      }
+    }),
 }); 

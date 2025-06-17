@@ -52,125 +52,27 @@ export const lookupAccount = async (domain: string) => {
   }
 };
 
-export const getAccountDetails = async (params: { domain: string }) => {
+export const getAccountDetails = async (accountId: string) => {
   try {
-    console.log(`[MadKudu API] Getting account details for: ${params.domain}`);
-    
-    // Step 1: Lookup account to get their ID
-    console.log(`[MadKudu API] First looking up account to get ID...`);
-    const accountData = await lookupAccount(params.domain);
-    console.log(`[MadKudu API] Account lookup result:`, JSON.stringify(accountData, null, 2));
-    
-    if (!accountData || !Array.isArray(accountData) || accountData.length === 0 || !accountData[0]?.mk_id) {
-      return {
-        error: 'Account not found',
-        message: `No account found with domain ${params.domain}. Account lookup returned: ${JSON.stringify(accountData)}`,
-        suggestion: 'Try with a different domain or ensure the account is in the MadKudu database'
-      };
-    }
-    
-    const accountId = accountData[0].mk_id;
-    console.log(`[MadKudu API] Found account ID: ${accountId}`);
-    
-    // Step 2: Try different possible endpoints for account details
-    const possibleEndpoints = [
-      { url: `https://madapi.madkudu.com/accounts/${accountId}`, params: {} },
-      { url: `https://madapi.madkudu.com/companies/${accountId}`, params: {} },
-      { url: `https://madapi.madkudu.com/v1/accounts`, params: { mk_id: accountId } },
-      { url: `https://madapi.madkudu.com/accounts`, params: { id: accountId } }
-    ];
-    
-    for (const endpoint of possibleEndpoints) {
-      try {
-        console.log(`[MadKudu API] Trying endpoint: ${endpoint.url} with params:`, endpoint.params);
-        const { data } = await axios.get(endpoint.url, { 
-          headers, 
-          params: endpoint.params
-        });
-        console.log(`[MadKudu API] Success! Account details retrieved from: ${endpoint.url}`);
-        return data;
-      } catch (endpointError) {
-        console.log(`[MadKudu API] Failed endpoint ${endpoint.url}:`, endpointError instanceof AxiosError ? endpointError.response?.status : endpointError);
-      }
-    }
-    
-    // If all endpoints failed, return the account data we already have as enriched account details
-    console.log(`[MadKudu API] All endpoints failed, returning enriched account data`);
-    return {
-      account: accountData[0],
-      enriched: true,
-      message: 'Account details enriched from account lookup data'
-    };
-    
+    console.log(`[MadKudu API] Getting account details for ID: ${accountId}`);
+    const { data } = await axios.get(`https://madapi.madkudu.com/accounts/${accountId}`, { headers });
+    console.log(`[MadKudu API] Account details retrieved for ID: ${accountId}`);
+    return data;
   } catch (error) {
     console.error('Error getting account details:', error);
-    
-    return {
-      error: 'Error during account details lookup',
-      message: error instanceof AxiosError ? `${error.response?.status}: ${error.message}` : String(error),
-      suggestion: 'Check the console for detailed error information'
-    };
+    throw new Error(error instanceof AxiosError ? error.message : 'Unknown error');
   }
 };
 
-export const getPersonDetails = async (params: { email: string }) => {
+export const getContactDetails = async (contactId: string) => {
   try {
-    console.log(`[MadKudu API] Getting person details for: ${params.email}`);
-    
-    // Step 1: Lookup person to get their ID
-    console.log(`[MadKudu API] First looking up person to get ID...`);
-    const personData = await lookupPerson(params.email);
-    console.log(`[MadKudu API] Person lookup result:`, JSON.stringify(personData, null, 2));
-    
-    if (!personData || !Array.isArray(personData) || personData.length === 0 || !personData[0]?.mk_id) {
-      return {
-        error: 'Person not found',
-        message: `No person found with email ${params.email}. Person lookup returned: ${JSON.stringify(personData)}`,
-        suggestion: 'Try with a different email address or ensure the person is in the MadKudu database'
-      };
-    }
-    
-    const personId = personData[0].mk_id;
-    console.log(`[MadKudu API] Found person ID: ${personId}`);
-    
-    // Step 2: Try different possible endpoints for person details
-    const possibleEndpoints = [
-      { url: `https://madapi.madkudu.com/persons/${personId}`, params: {} },
-      { url: `https://madapi.madkudu.com/contacts/${personId}`, params: {} },
-      { url: `https://madapi.madkudu.com/v1/persons`, params: { mk_id: personId } },
-      { url: `https://madapi.madkudu.com/persons`, params: { id: personId } }
-    ];
-    
-    for (const endpoint of possibleEndpoints) {
-      try {
-        console.log(`[MadKudu API] Trying endpoint: ${endpoint.url} with params:`, endpoint.params);
-        const { data } = await axios.get(endpoint.url, { 
-          headers, 
-          params: endpoint.params
-        });
-        console.log(`[MadKudu API] Success! Person details retrieved from: ${endpoint.url}`);
-        return data;
-      } catch (endpointError) {
-        console.log(`[MadKudu API] Failed endpoint ${endpoint.url}:`, endpointError instanceof AxiosError ? endpointError.response?.status : endpointError);
-      }
-    }
-    
-    // If all endpoints failed, return the person data we already have as enriched person details
-    console.log(`[MadKudu API] All endpoints failed, returning enriched person data`);
-    return {
-      person: personData[0],
-      enriched: true,
-      message: 'Person details enriched from person lookup data'
-    };
-    
+    console.log(`[MadKudu API] Getting contact details for ID: ${contactId}`);
+    const { data } = await axios.get(`https://madapi.madkudu.com/contacts/${contactId}`, { headers });
+    console.log(`[MadKudu API] Contact details retrieved for ID: ${contactId}`);
+    return data;
   } catch (error) {
-    console.error('Error getting person details:', error);
-    
-    return {
-      error: 'Error during person details lookup',
-      message: error instanceof AxiosError ? `${error.response?.status}: ${error.message}` : String(error),
-      suggestion: 'Check the console for detailed error information'
-    };
+    console.error('Error getting contact details:', error);
+    throw new Error(error instanceof AxiosError ? error.message : 'Unknown error');
   }
 };
 
@@ -334,135 +236,4 @@ export const getAIResearchWithRetry = async (domain: string, maxRetries = 3): Pr
   }
   
   throw new Error(`Failed to get AI research after ${maxRetries} attempts`);
-};
-
-export const discoverPersons = async (params: { 
-  company_domain?: string, 
-  provider: 'apollo' | 'zoominfo' | 'cognism',
-  title?: string,
-  seniority?: string,
-  country?: string
-}) => {
-  try {
-    console.log(`[MadKudu API] Discovering persons with params: ${JSON.stringify(params)}`);
-    
-    // Build the request body according to the API spec
-    const requestBody: any = {
-      provider: params.provider,
-      filters: {}
-    };
-    
-    // Add filters only if they have values
-    if (params.company_domain) requestBody.filters.company_domain = params.company_domain;
-    if (params.title) requestBody.filters.title = params.title;
-    if (params.seniority) requestBody.filters.seniority = params.seniority;
-    if (params.country) requestBody.filters.location = { country: params.country };
-    
-    // Add default pagination - limit to 3 results for discovery
-    requestBody.pagination = { page: 1, size: 3 };
-    
-    console.log(`[MadKudu API] Request body: ${JSON.stringify(requestBody)}`);
-    
-    // Use POST method with correct endpoint
-    const { data } = await axios.post('https://madapi.madkudu.com/sourcing/persons/discover', requestBody, { headers });
-    console.log(`[MadKudu API] Person discovery successful.`);
-    return data;
-  } catch (error) {
-    console.error('Error discovering persons:', error);
-    
-    // If the endpoint doesn't exist, return a helpful message instead of throwing
-    if (error instanceof AxiosError && error.response?.status === 404) {
-      return {
-        error: 'Person discovery endpoint not available',
-        message: 'This feature may require additional API permissions',
-        suggestion: 'Please contact MadKudu support to enable sourcing features'
-      };
-    }
-    
-    throw new Error(error instanceof AxiosError ? error.message : 'Unknown error');
-  }
-};
-
-export const getPersonActivities = async (params: { email: string }) => {
-  try {
-    console.log(`[MadKudu API] Getting person activities for: ${params.email}`);
-    
-    // Step 1: Lookup person to get their ID
-    console.log(`[MadKudu API] First looking up person to get ID...`);
-    const personData = await lookupPerson(params.email);
-    console.log(`[MadKudu API] Person lookup result:`, JSON.stringify(personData, null, 2));
-    
-    if (!personData || !Array.isArray(personData) || personData.length === 0 || !personData[0]?.mk_id) {
-      return {
-        error: 'Person not found',
-        message: `No person found with email ${params.email}. Person lookup returned: ${JSON.stringify(personData)}`,
-        suggestion: 'Try with a different email address or ensure the person is in the MadKudu database'
-      };
-    }
-    
-    const personId = personData[0].mk_id;
-    console.log(`[MadKudu API] Found person ID: ${personId}`);
-    
-    // Step 2: Try different possible endpoint structures
-    const possibleEndpoints = [
-      { url: `https://madapi.madkudu.com/activities/persons/${personId}`, params: {} },
-      { url: `https://madapi.madkudu.com/activities/persons`, params: { person_id: personId } },
-      { url: `https://madapi.madkudu.com/activities/persons`, params: { id: personId } },
-      { url: `https://madapi.madkudu.com/persons/${personId}/activities`, params: {} }
-    ];
-    
-    for (const endpoint of possibleEndpoints) {
-      try {
-        console.log(`[MadKudu API] Trying endpoint: ${endpoint.url} with params:`, endpoint.params);
-        const { data } = await axios.get(endpoint.url, { 
-          headers, 
-          params: { ...endpoint.params, limit: 20 }
-        });
-        console.log(`[MadKudu API] Success! Person activities retrieved from: ${endpoint.url}`);
-        return data;
-      } catch (endpointError) {
-        console.log(`[MadKudu API] Failed endpoint ${endpoint.url}:`, endpointError instanceof AxiosError ? endpointError.response?.status : endpointError);
-      }
-    }
-    
-    // If all endpoints failed
-    return {
-      error: 'Person activities endpoint not available',
-      message: `Person found (ID: ${personId}) but no activities endpoint worked`,
-      suggestion: 'The activities API may not be available or may require different authentication'
-    };
-    
-  } catch (error) {
-    console.error('Error getting person activities:', error);
-    
-    return {
-      error: 'Error during person activities lookup',
-      message: error instanceof AxiosError ? `${error.response?.status}: ${error.message}` : String(error),
-      suggestion: 'Check the console for detailed error information'
-    };
-  }
-};
-
-export const getAccountActivities = async (params: { domain: string }) => {
-  try {
-    console.log(`[MadKudu API] Getting account activities for: ${params.domain}`);
-    const { data } = await axios.get('https://madapi.madkudu.com/activities/accounts', { headers, params });
-    console.log(`[MadKudu API] Account activities retrieved for: ${params.domain}`);
-    return data;
-  } catch (error) {
-    console.error('Error getting account activities:', error);
-    throw new Error(error instanceof AxiosError ? error.message : 'Unknown error');
-  }
-};
-
-export const getAccountTopUsers = async (params: { domain: string }) => {
-  try {
-    console.log(`[MadKudu API] Getting account top users for: ${params.domain}`);
-    const { data } = await axios.get('https://madapi.madkudu.com/accounts/top-users', { headers, params });
-    console.log(`[MadKudu API] Account top users retrieved for: ${params.domain}`);
-    return data;
-  } catch (error) {
-    console.error('Error getting account top users:', error);
-    throw new Error(error instanceof AxiosError ? error.message : 'Unknown error');
-  }
 }; 

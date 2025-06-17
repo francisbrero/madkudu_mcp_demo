@@ -184,7 +184,7 @@ Here is the updated version of **Task 4 and beyond** in your PRD, modified to re
      return data;
    };
 
-   export const getPersonDetails = async (contactId: string) => {
+   export const getContactDetails = async (contactId: string) => {
      const { data } = await axios.get(`https://madapi.madkudu.com/contacts/${contactId}`, { headers });
      return data;
    };
@@ -260,9 +260,9 @@ pnpm dev
    → Streamed AI-generated company insights and sales angles.
 
 3. `lookupPerson(email)`
-   → Get enriched identity + inferred intent and person details.
+   → Get enriched identity + inferred intent and contact details.
 
-4. `getPersonDetails(contactId)`
+4. `getContactDetails(contactId)`
    → Fetch LinkedIn, location, photo, role, and public presence.
 
 ---
@@ -276,7 +276,7 @@ Assemble a system prompt using the results of the API calls:
 {{output from lookupAccount + AIResearch}}
 
 ## Contact Context
-{{output from lookupPerson + getPersonDetails}}
+{{output from lookupPerson + getContactDetails}}
 
 ## Instructions
 You are Francis Brero, CPO at MadKudu. You’re preparing a first outreach to this executive. Use the research above to:
@@ -341,7 +341,7 @@ Ensure that:
 
 4. `lookupPerson(email)` for known users (if provided)
 
-5. `getPersonDetails(contactId)` for each top user (if needed)
+5. `getContactDetails(contactId)` for each top user (if needed)
 
 ---
 
