@@ -1,11 +1,13 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { db } from "~/server/db";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 export const agentRouter = createTRPCRouter({
   getAll: publicProcedure
     .query(async () => {
-      const agents = await db.agent.findMany({
+      const agents = await prisma.agent.findMany({
         orderBy: { updatedAt: "desc" },
       });
       return agents;
@@ -14,7 +16,7 @@ export const agentRouter = createTRPCRouter({
   getById: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input }) => {
-      const agent = await db.agent.findUnique({
+      const agent = await prisma.agent.findUnique({
         where: { id: input.id },
       });
       return agent;
@@ -22,7 +24,7 @@ export const agentRouter = createTRPCRouter({
 
   getActive: publicProcedure
     .query(async () => {
-      const activeAgents = await db.agent.findMany({
+      const activeAgents = await prisma.agent.findMany({
         where: { active: true },
         orderBy: { updatedAt: "desc" },
       });
@@ -40,7 +42,7 @@ export const agentRouter = createTRPCRouter({
       active: z.boolean(),
     }))
     .mutation(async ({ input }) => {
-      const agent = await db.agent.create({
+      const agent = await prisma.agent.create({
         data: input,
       });
       return agent;
@@ -59,7 +61,7 @@ export const agentRouter = createTRPCRouter({
     }))
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
-      const agent = await db.agent.update({
+      const agent = await prisma.agent.update({
         where: { id },
         data,
       });
@@ -69,7 +71,7 @@ export const agentRouter = createTRPCRouter({
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      await db.agent.delete({
+      await prisma.agent.delete({
         where: { id: input.id },
       });
       return { success: true };
