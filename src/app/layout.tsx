@@ -2,8 +2,9 @@ import "~/styles/globals.css";
 
 import { type Metadata } from "next";
 import { Inter } from "next/font/google";
+import Link from "next/link";
+
 import { TRPCReactProvider } from "~/trpc/react";
-import SidebarNav from "./_components/SidebarNav";
 
 export const metadata: Metadata = {
   title: "MadKudu MCP Demo",
@@ -23,10 +24,23 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable}`}>
       <body>
         <TRPCReactProvider>
-          <div className="flex h-screen bg-madkudu-gradient">
-            <SidebarNav />
-            <main className="flex-1 overflow-y-auto">{children}</main>
-          </div>
+          <nav className="bg-zinc-900 text-white p-4 shadow-md">
+            <div className="container mx-auto flex justify-between items-center">
+              <div className="text-xl font-bold">MadKudu MCP</div>
+              <div className="space-x-6">
+                <Link href="/" className="hover:text-blue-300 transition-colors">
+                  Home
+                </Link>
+                <Link href="/agents" className="hover:text-blue-300 transition-colors">
+                  Agent Builder
+                </Link>
+                <Link href="/mcp-test" className="hover:text-blue-300 transition-colors">
+                  API Test
+                </Link>
+              </div>
+            </div>
+          </nav>
+          {children}
         </TRPCReactProvider>
       </body>
     </html>
