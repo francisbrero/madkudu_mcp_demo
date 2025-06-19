@@ -147,3 +147,36 @@ The Tool Playground will now be built on top of our live, validated MCP connecti
 
 **Validation:**
 Run `pnpm build`. After validating the MCP connection on the Settings page, navigate to the Playground. The page should successfully fetch and display the list of tools from the live MCP server. Executing a tool should return a real result or error from the server.
+
+### **Task 5: Implement the General Chat Page**
+
+**Context:**
+This task involves creating the Chat page, where users can have a conversation with an LLM that is empowered to use the live MCP tools. This requires integrating the OpenAI API and orchestrating the tool-calling flow on the backend.
+
+**Instructions:**
+1.  Install the OpenAI SDK: `pnpm add openai`.
+2.  Create the chat UI component at `src/app/chat/_components/ChatInterface.tsx`.
+    * This component will manage the conversation history (`messages`) in its local state.
+    * It will render the list of messages and an input form.
+    * It should use the `useSettingsStore` to check for a valid `mcpStatus` and a present `openaiApiKey`. If either is missing, it should render a prompt for the user to visit the Settings page.
+3.  Add a new procedure to `src/server/api/routers/mcp.ts` called `getChatResponse`.
+    * This procedure will accept a `messages` array as input.
+    * It will retrieve the available MCP tools (e.g., by calling the internal `getTools` logic).
+    * It will then format these tools into the JSON format required by the OpenAI API's `tools` parameter.
+    * The procedure will make a call to the OpenAI Chat Completions API, providing the message history and the defined tools.
+    * **Tool-Calling Logic:**
+        * If the OpenAI API response includes `tool_calls`, the procedure must iterate through them.
+        * For each tool call, it will execute the corresponding MCP tool using the internal `runTool` logic.
+        * The results from all tool calls are collected.
+        * The procedure then makes a *second* call to the OpenAI API, appending the `tool_calls` and their results to the message history, to get a final, natural-language summary.
+        * If the initial API response does *not* include `tool_calls`, its content is the final response.
+    * The procedure returns the final message content from the assistant.
+4.  In the `ChatInterface.tsx` component, use the `useMutation` hook from tRPC to call the `getChatResponse` procedure.
+5.  The UI should provide clear user feedback, such as a "thinking" indicator while the mutation is pending. Bonus: Display a message like "Using tool: `Get Account Details`..." when a tool call is in progress.
+
+**Documentation Links:**
+* [OpenAI API Reference (Function Calling/Tools)](https://platform.openai.com/docs/guides/function-calling)
+* [tRPC Mutations](https://trpc.io/docs/useMutation)
+
+**Validation:**
+Run `pnpm build`. After configuring keys in Settings, navigate to the Chat page. You should be able to have a conversation. Test it by asking a question that requires a tool, e.g., "Can you tell me about madkudu.com?". The app should display a response generated from the live tool result.
