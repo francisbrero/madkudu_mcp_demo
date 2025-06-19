@@ -1,6 +1,4 @@
-import { type NextPage } from "next";
-
-const HomePage: NextPage = () => {
+export default function HomePage() {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold">Welcome to MadKudu MCP Demo</h1>
@@ -10,6 +8,4 @@ const HomePage: NextPage = () => {
       </p>
     </div>
   );
-};
-
-export default HomePage;
+}

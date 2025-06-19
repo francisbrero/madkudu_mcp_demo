@@ -1,17 +1,14 @@
 import "~/styles/globals.css";
-
+import { TRPCReactProvider } from "~/trpc/react";
+import { type Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Sidebar } from "./_components/Sidebar";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
+const inter = Inter({ subsets: ["latin"] });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "MadKudu MCP Demo",
-  description: "Interactive demo of MadKudu's Model-Context Provider",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
+  description: "Demo app for MadKudu MCP",
 };
 
 export default function RootLayout({
@@ -20,14 +17,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`font-sans ${inter.variable}`}>
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto bg-gray-50">
-            {children}
-          </main>
-        </div>
+    <html lang="en" className={inter.className}>
+      <body>
+        <TRPCReactProvider>
+          <div className="flex min-h-screen">
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto bg-gray-50">
+              {children}
+            </main>
+          </div>
+        </TRPCReactProvider>
       </body>
     </html>
   );
