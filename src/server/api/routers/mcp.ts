@@ -2,55 +2,86 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { initializeMcpClient, clearMcpClient } from "../mcp-client";
 
-type OpenAIErrorResponse = {
-  error?: {
-    message: string;
+interface MCPResponse {
+  success: boolean;
+  error?: string;
+}
+
+interface MCPTool {
+  name: string;
+  description: string;
+  inputSchema: {
+    type: string;
+    properties: Record<string, unknown>;
+    required?: string[];
+    additionalProperties: boolean;
+    $schema: string;
   };
-};
+}
+
+interface MCPToolsResponse {
+  tools: MCPTool[];
+}
+
+interface MCPToolResult {
+  result: unknown;
+}
+
+// Zod schema for tool validation
+const toolSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  inputSchema: z.object({
+    type: z.string(),
+    properties: z.record(z.unknown()),
+    required: z.array(z.string()).optional(),
+    additionalProperties: z.boolean(),
+    $schema: z.string()
+  })
+});
+
+// Zod schema for tools response
+const toolsResponseSchema = z.object({
+  tools: z.array(toolSchema)
+});
 
 export const mcpRouter = createTRPCRouter({
   validateKey: publicProcedure
-    .input(z.object({ 
-      apiKey: z.string().min(1),
-      openaiApiKey: z.string().min(1)
-    }))
-    .mutation(async ({ input }) => {
+    .input(z.object({ apiKey: z.string().min(1) }))
+    .mutation(async ({ input }): Promise<MCPResponse> => {
       try {
         // Clear any existing client
         clearMcpClient();
         
-        // Attempt to initialize MCP client
+        // Try to initialize MCP client
         await initializeMcpClient(input.apiKey);
-
-        // Now validate OpenAI API Key
-        const openaiResponse = await fetch('https://api.openai.com/v1/models', {
-          headers: {
-            'Authorization': `Bearer ${input.openaiApiKey}`
-          }
-        });
-
-        if (!openaiResponse.ok) {
-          const openaiData = await openaiResponse.json() as OpenAIErrorResponse;
-          return { success: false, error: `Invalid OpenAI API Key: ${openaiData.error?.message ?? openaiResponse.statusText}` };
-        }
-
         return { success: true };
       } catch (error) {
-        console.error("Validation error:", error);
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+        console.error("MCP Validation Error:", error);
         return { 
           success: false, 
-          error: errorMessage.includes('HTTP 400') ? 
-            'Invalid MadKudu API Key: The provided key is not valid or has insufficient permissions' : 
-            errorMessage 
+          error: error instanceof Error ? error.message : 'Failed to connect to MCP server' 
         };
       }
     }),
 
   getTools: publicProcedure
-    .query(async () => {
-      const client = await initializeMcpClient(process.env.MADKUDU_API_KEY!);
-      return client.listTools();
+    .query(async (): Promise<MCPToolsResponse> => {
+      // Get API key from environment variable
+      const apiKey = process.env.MADKUDU_API_KEY;
+      if (!apiKey) {
+        throw new Error('MADKUDU_API_KEY environment variable is not set');
+      }
+
+      // Initialize client if needed
+      const client = await initializeMcpClient(apiKey);
+      const rawTools = await client.listTools();
+      
+      // Parse and validate the response
+      const parsed = toolsResponseSchema.parse(rawTools);
+      
+      // Return the tools directly since the format matches our interface
+      return parsed;
     }),
 
   runTool: publicProcedure
@@ -58,8 +89,20 @@ export const mcpRouter = createTRPCRouter({
       name: z.string(),
       arguments: z.record(z.unknown())
     }))
-    .mutation(async ({ input }) => {
-      const client = await initializeMcpClient(process.env.MADKUDU_API_KEY!);
-      return client.callTool(input);
-    })
+    .mutation(async ({ input }): Promise<MCPToolResult> => {
+      // Get API key from environment variable
+      const apiKey = process.env.MADKUDU_API_KEY;
+      if (!apiKey) {
+        throw new Error('MADKUDU_API_KEY environment variable is not set');
+      }
+
+      // Initialize client if needed
+      const client = await initializeMcpClient(apiKey);
+      const result = await client.callTool({
+        name: input.name,
+        arguments: input.arguments
+      });
+      
+      return { result };
+    }),
 }); 

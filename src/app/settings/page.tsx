@@ -6,38 +6,33 @@ import { useSettingsStore } from '~/stores/settings-store';
 
 export default function SettingsPage() {
   const { madkuduApiKey, openaiApiKey, mcpStatus, setMadkuduApiKey, setOpenaiApiKey, setMcpStatus } = useSettingsStore();
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const validateKeyMutation = api.mcp.validateKey.useMutation({
     onSuccess: (data) => {
       if (data.success) {
         setMcpStatus('valid');
-        setValidationError(null);
+        setError(null);
       } else {
         setMcpStatus('invalid');
-        setValidationError(data.error ?? 'Validation failed');
+        setError(data.error ?? 'Validation failed');
       }
     },
-    onError: (error) => {
+    onError: (err) => {
       setMcpStatus('invalid');
-      setValidationError(error.message);
+      setError(err.message);
     },
   });
 
   const handleValidate = async () => {
     if (!madkuduApiKey) {
-      setValidationError('MadKudu API key is required');
+      setError('MadKudu API Key is required');
       return;
     }
-    if (!openaiApiKey) {
-      setValidationError('OpenAI API key is required');
-      return;
-    }
+
     setMcpStatus('validating');
-    validateKeyMutation.mutate({ 
-      apiKey: madkuduApiKey,
-      openaiApiKey: openaiApiKey
-    });
+    setError(null);
+    validateKeyMutation.mutate({ apiKey: madkuduApiKey });
   };
 
   return (
@@ -46,46 +41,52 @@ export default function SettingsPage() {
       
       <div className="space-y-6">
         <div className="space-y-2">
-          <label className="block text-sm font-medium">
+          <label htmlFor="madkudu-key" className="block font-medium">
             MadKudu API Key
           </label>
           <input
+            id="madkudu-key"
             type="password"
             value={madkuduApiKey}
             onChange={(e) => setMadkuduApiKey(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-black"
             placeholder="Enter your MadKudu API key"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium">
+          <label htmlFor="openai-key" className="block font-medium">
             OpenAI API Key
           </label>
           <input
+            id="openai-key"
             type="password"
             value={openaiApiKey}
             onChange={(e) => setOpenaiApiKey(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-black"
             placeholder="Enter your OpenAI API key"
           />
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="space-y-4">
           <button
             onClick={handleValidate}
             disabled={mcpStatus === 'validating'}
-            className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-400"
+            className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:bg-gray-400"
           >
             {mcpStatus === 'validating' ? 'Validating...' : 'Validate Keys'}
           </button>
 
-          {mcpStatus === 'valid' && (
-            <span className="text-sm text-green-600">✓ Keys validated successfully</span>
+          {error && (
+            <div className="rounded-md bg-red-100 p-4 text-red-700">
+              {error}
+            </div>
           )}
-          
-          {validationError && (
-            <span className="text-sm text-red-600">{validationError}</span>
+
+          {mcpStatus === 'valid' && (
+            <div className="rounded-md bg-green-100 p-4 text-green-700">
+              API keys validated successfully!
+            </div>
           )}
         </div>
       </div>

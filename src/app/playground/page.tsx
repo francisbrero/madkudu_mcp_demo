@@ -4,23 +4,74 @@ import { useState } from 'react';
 import { useSettingsStore } from '~/stores/settings-store';
 import { api } from '~/trpc/react';
 
-type MCPTool = {
-  name: string;
-  description: string;
-  parameters: {
-    type: string;
-    properties: Record<string, unknown>;
-    required: string[];
-  };
-};
-
 type MCPToolArgs = Record<string, unknown>;
+
+type ResponseViewMode = 'raw' | 'parsed';
+
+interface ResponseVisualizerProps {
+  response: string;
+  viewMode: ResponseViewMode;
+  onViewModeChange: (mode: ResponseViewMode) => void;
+}
+
+function ResponseVisualizer({ response, viewMode, onViewModeChange }: ResponseVisualizerProps) {
+  let displayContent = response;
+  let parsedContent: unknown = null;
+  let parseError: string | null = null;
+
+  // Try to parse the JSON if we're in parsed mode
+  if (viewMode === 'parsed' && response) {
+    try {
+      parsedContent = JSON.parse(response);
+      displayContent = JSON.stringify(parsedContent, null, 2);
+    } catch (err) {
+      parseError = err instanceof Error ? err.message : 'Failed to parse JSON';
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <label className="font-medium">Result</label>
+        <div className="flex items-center gap-2 rounded border p-1">
+          <button
+            onClick={() => onViewModeChange('raw')}
+            className={`rounded px-2 py-1 text-sm ${
+              viewMode === 'raw' ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'
+            }`}
+          >
+            Raw
+          </button>
+          <button
+            onClick={() => onViewModeChange('parsed')}
+            className={`rounded px-2 py-1 text-sm ${
+              viewMode === 'parsed' ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'
+            }`}
+          >
+            Parsed
+          </button>
+        </div>
+      </div>
+      
+      {parseError && viewMode === 'parsed' ? (
+        <div className="rounded border border-red-300 bg-red-50 p-4 text-red-700">
+          Failed to parse JSON: {parseError}
+        </div>
+      ) : (
+        <pre className="max-h-[500px] overflow-auto rounded border bg-gray-50 p-4 font-mono">
+          {displayContent}
+        </pre>
+      )}
+    </div>
+  );
+}
 
 export default function PlaygroundPage() {
   const { mcpStatus } = useSettingsStore();
   const [selectedTool, setSelectedTool] = useState<string>('');
   const [toolArgs, setToolArgs] = useState<string>('{}');
   const [result, setResult] = useState<string>('');
+  const [viewMode, setViewMode] = useState<ResponseViewMode>('parsed');
 
   const { data: tools } = api.mcp.getTools.useQuery(undefined, {
     enabled: mcpStatus === 'valid'
@@ -28,10 +79,11 @@ export default function PlaygroundPage() {
 
   const runToolMutation = api.mcp.runTool.useMutation({
     onSuccess: (data) => {
-      setResult(JSON.stringify(data, null, 2));
+      // Store the raw JSON string
+      setResult(JSON.stringify(data));
     },
     onError: (error) => {
-      setResult(`Error: ${error.message}`);
+      setResult(JSON.stringify({ error: error.message }));
     }
   });
 
@@ -82,8 +134,8 @@ export default function PlaygroundPage() {
               name: selectedTool,
               arguments: args
             });
-          } catch (error) {
-            setResult('Error: Invalid JSON in arguments');
+          } catch {
+            setResult(JSON.stringify({ error: 'Invalid JSON in arguments' }));
           }
         }}
         disabled={!selectedTool || runToolMutation.isPending}
@@ -93,12 +145,11 @@ export default function PlaygroundPage() {
       </button>
 
       {result && (
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">Result</label>
-          <pre className="rounded border bg-gray-50 p-4 font-mono">
-            {result}
-          </pre>
-        </div>
+        <ResponseVisualizer
+          response={result}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
       )}
     </div>
   );

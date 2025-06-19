@@ -1,8 +1,12 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
-let mcpClient: Client | undefined;
+let mcpClient: Client | null = null;
+
+export function clearMcpClient(): void {
+  mcpClient = null;
+}
 
 export async function initializeMcpClient(apiKey: string): Promise<Client> {
   if (mcpClient) {
@@ -10,32 +14,39 @@ export async function initializeMcpClient(apiKey: string): Promise<Client> {
   }
 
   const baseUrl = new URL(`https://mcp.madkudu.com/${apiKey}/mcp`);
-  
-  // Try modern transport first
+  const client = new Client({
+    name: 'madkudu-mcp-demo',
+    version: '1.0.0'
+  });
+
   try {
-    mcpClient = new Client({
-      name: 'madkudu-mcp-demo',
-      version: '1.0.0'
-    });
+    // Try modern transport first
     const transport = new StreamableHTTPClientTransport(baseUrl);
-    await mcpClient.connect(transport);
-    return mcpClient;
-  } catch (error) {
-    // If modern transport fails, try legacy SSE transport
-    mcpClient = new Client({
-      name: 'madkudu-mcp-demo',
-      version: '1.0.0'
-    });
-    const sseTransport = new SSEClientTransport(baseUrl);
-    await mcpClient.connect(sseTransport);
-    return mcpClient;
+    await client.connect(transport);
+    console.log('✅ MadKudu MCP connected successfully (Streamable HTTP)');
+    mcpClient = client;
+    return client;
+  } catch {
+    // Fallback to SSE transport
+    console.log('Streamable HTTP connection failed, trying SSE transport...');
+    
+    try {
+      const sseTransport = new SSEClientTransport(baseUrl);
+      await client.connect(sseTransport);
+      console.log('✅ MadKudu MCP connected successfully (SSE)');
+      mcpClient = client;
+      return client;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('❌ Failed to connect to MadKudu MCP:', message);
+      throw new Error('Failed to connect to MadKudu MCP');
+    }
   }
 }
 
-export function getMcpClient(): Client | undefined {
+export function getMcpClient(): Client {
+  if (!mcpClient) {
+    throw new Error('MCP client not initialized');
+  }
   return mcpClient;
-}
-
-export function clearMcpClient(): void {
-  mcpClient = undefined;
 } 
