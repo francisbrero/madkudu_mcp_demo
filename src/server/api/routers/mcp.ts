@@ -1,108 +1,261 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { initializeMcpClient, clearMcpClient } from "../mcp-client";
+import OpenAI from "openai";
+import { env } from "~/env";
+import { TRPCError } from "@trpc/server";
+import type {
+  ChatCompletion,
+  ChatCompletionMessageParam,
+} from "openai/resources/chat";
+import { initializeMcpClient, clearMcpClient } from "~/server/api/mcp-client";
+import type { Tool } from "@modelcontextprotocol/sdk";
+import { getDisplayName } from "@modelcontextprotocol/sdk/shared/metadataUtils.js";
 
-interface MCPResponse {
-  success: boolean;
-  error?: string;
-}
-
-interface MCPTool {
-  name: string;
-  description: string;
-  inputSchema: {
-    type: string;
-    properties: Record<string, unknown>;
-    required?: string[];
-    additionalProperties: boolean;
-    $schema: string;
+interface OpenAIResponse {
+  error?: {
+    message: string;
   };
 }
-
-interface MCPToolsResponse {
-  tools: MCPTool[];
-}
-
-interface MCPToolResult {
-  result: unknown;
-}
-
-// Zod schema for tool validation
-const toolSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  inputSchema: z.object({
-    type: z.string(),
-    properties: z.record(z.unknown()),
-    required: z.array(z.string()).optional(),
-    additionalProperties: z.boolean(),
-    $schema: z.string()
-  })
-});
-
-// Zod schema for tools response
-const toolsResponseSchema = z.object({
-  tools: z.array(toolSchema)
-});
 
 export const mcpRouter = createTRPCRouter({
   validateKey: publicProcedure
     .input(z.object({ apiKey: z.string().min(1) }))
-    .mutation(async ({ input }): Promise<MCPResponse> => {
+    .mutation(async ({ input }) => {
       try {
-        // Clear any existing client
+        // We need to clear any previously cached client that might have been created
+        // with a different (or invalid) key.
         clearMcpClient();
-        
-        // Try to initialize MCP client
         await initializeMcpClient(input.apiKey);
         return { success: true };
       } catch (error) {
-        console.error("MCP Validation Error:", error);
-        return { 
-          success: false, 
-          error: error instanceof Error ? error.message : 'Failed to connect to MCP server' 
-        };
+        const errorMessage =
+          error instanceof Error ? error.message : "Validation failed";
+        return { success: false, error: errorMessage };
+      }
+    }),
+
+  validateOpenAIKey: publicProcedure
+    .input(z.object({ apiKey: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      try {
+        const response = await fetch("https://api.openai.com/v1/models", {
+          headers: {
+            Authorization: `Bearer ${input.apiKey}`,
+          },
+        });
+        const data = (await response.json()) as OpenAIResponse;
+        if (!response.ok || data.error) {
+          throw new Error(
+            data.error?.message ?? `HTTP Error ${response.status}`,
+          );
+        }
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("OpenAI API Key validation failed:", message);
+        return { success: false, error: "Validation failed" };
       }
     }),
 
   getTools: publicProcedure
-    .query(async (): Promise<MCPToolsResponse> => {
-      // Get API key from environment variable
-      const apiKey = process.env.MADKUDU_API_KEY;
-      if (!apiKey) {
-        throw new Error('MADKUDU_API_KEY environment variable is not set');
-      }
+    .input(z.object({ apiKey: z.string().min(1) }))
+    .query(async ({ input }): Promise<Tool[]> => {
+      try {
+        const client = await initializeMcpClient(input.apiKey);
+        const toolList = await client.listTools();
 
-      // Initialize client if needed
-      const client = await initializeMcpClient(apiKey);
-      const rawTools = await client.listTools();
-      
-      // Parse and validate the response
-      const parsed = toolsResponseSchema.parse(rawTools);
-      
-      // Return the tools directly since the format matches our interface
-      return parsed;
+        // Sort tools by display name
+        const sortedTools = toolList.tools.sort((a, b) => {
+          const aName = getDisplayName(a) ?? a.name;
+          const bName = getDisplayName(b) ?? b.name;
+          return aName.localeCompare(bName);
+        });
+
+        return sortedTools;
+      } catch (error) {
+        console.error("Detailed error in getTools:", error);
+        const message =
+          error instanceof Error ? error.message : "Failed to fetch MCP tools";
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message,
+        });
+      }
     }),
 
   runTool: publicProcedure
-    .input(z.object({
-      name: z.string(),
-      arguments: z.record(z.unknown())
-    }))
-    .mutation(async ({ input }): Promise<MCPToolResult> => {
-      // Get API key from environment variable
-      const apiKey = process.env.MADKUDU_API_KEY;
-      if (!apiKey) {
-        throw new Error('MADKUDU_API_KEY environment variable is not set');
+    .input(
+      z.object({
+        apiKey: z.string().min(1),
+        toolId: z.string(),
+        params: z.record(z.unknown()), // Accept any JSON object for params
+      }),
+    )
+    .mutation(async ({ input }): Promise<unknown> => {
+      try {
+        const client = await initializeMcpClient(input.apiKey);
+        const result = await client.callTool({
+          name: input.toolId,
+          arguments: input.params,
+        });
+        return result;
+      } catch (error) {
+        console.error("MCP Tool Execution Error:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to execute MCP tool",
+        });
+      }
+    }),
+
+  getChatResponse: publicProcedure
+    .input(
+      z.object({
+        messages: z.array(
+          z.object({
+            role: z.enum(["user", "assistant", "system", "tool"]),
+            content: z.string(),
+            name: z.string().optional(),
+            tool_calls: z
+              .array(
+                z.object({
+                  id: z.string(),
+                  type: z.literal("function"),
+                  function: z.object({
+                    name: z.string(),
+                    arguments: z.string(),
+                  }),
+                }),
+              )
+              .optional(),
+            tool_call_id: z.string().optional(),
+          }),
+        ),
+        openAIApiKey: z.string(),
+        madkuduApiKey: z.string(),
+      }),
+    )
+    .mutation(async ({ input }): Promise<ChatCompletionMessageParam> => {
+      if (!input.openAIApiKey) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'OpenAI API key is not set.',
+        });
       }
 
-      // Initialize client if needed
-      const client = await initializeMcpClient(apiKey);
-      const result = await client.callTool({
-        name: input.name,
-        arguments: input.arguments
-      });
-      
-      return { result };
+      if (!input.madkuduApiKey) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'MadKudu API key is not set.',
+        });
+      }
+
+      const openai = new OpenAI({ apiKey: input.openAIApiKey });
+      const mcpClient = await initializeMcpClient(input.madkuduApiKey);
+
+      try {
+        const mcpTools = (await mcpClient.listTools()).tools;
+
+        const openAiTools = mcpTools.map((tool) => {
+          return {
+            type: "function" as const,
+            function: {
+              name: tool.name,
+              description: tool.description ?? "",
+              parameters: tool.inputSchema ?? {},
+            },
+          };
+        });
+
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4-turbo",
+          messages: input.messages as ChatCompletionMessageParam[],
+          tools: openAiTools.length > 0 ? openAiTools : undefined,
+          tool_choice: openAiTools.length > 0 ? "auto" : undefined,
+        });
+
+        const responseMessage = completion.choices[0]?.message;
+
+        if (!responseMessage) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "No response from OpenAI",
+          });
+        }
+
+        // Check if the model wants to use tools
+        if (responseMessage.tool_calls) {
+          const toolMessages: ChatCompletionMessageParam[] = [];
+
+          for (const toolCall of responseMessage.tool_calls) {
+            const functionName = toolCall.function.name;
+            let functionArgs: Record<string, unknown> = {};
+            try {
+              functionArgs = JSON.parse(toolCall.function.arguments);
+            } catch (error) {
+              toolMessages.push({
+                tool_call_id: toolCall.id,
+                role: "tool",
+                name: functionName,
+                content: `Error: Invalid arguments provided. Expected a valid JSON object string.`,
+              });
+              continue;
+            }
+
+            try {
+              const result: unknown = await mcpClient.callTool({
+                name: functionName,
+                arguments: functionArgs,
+              });
+              toolMessages.push({
+                tool_call_id: toolCall.id,
+                role: "tool",
+                name: functionName,
+                content: JSON.stringify(result as any),
+              });
+            } catch (runError) {
+              const errorMessage =
+                runError instanceof Error ? runError.message : "Unknown error";
+              toolMessages.push({
+                tool_call_id: toolCall.id,
+                role: "tool",
+                name: functionName,
+                content: `Error: ${errorMessage}`,
+              });
+            }
+          }
+
+          // Make a second API call with the tool results
+          const secondCompletion = await openai.chat.completions.create({
+            model: "gpt-4-turbo",
+            messages: [
+              ...(input.messages as ChatCompletionMessageParam[]),
+              responseMessage,
+              ...toolMessages,
+            ],
+          });
+
+          return (
+            secondCompletion.choices[0]?.message ?? {
+              role: "assistant",
+              content: "Error: No response from OpenAI after tool call.",
+            }
+          );
+        }
+
+        // If no tool calls, return the direct response
+        return responseMessage;
+      } catch (error) {
+        console.error("Chat completion error:", error);
+        const message =
+          error instanceof Error ? error.message : "An unknown error occurred";
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to get chat response: ${message}`,
+        });
+      }
     }),
 }); 

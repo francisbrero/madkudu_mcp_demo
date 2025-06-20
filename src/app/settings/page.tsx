@@ -1,93 +1,154 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '~/trpc/react';
-import { useSettingsStore } from '~/stores/settings-store';
+import { useSettingsStore, type MCPStatus } from '~/stores/settings-store';
 
 export default function SettingsPage() {
-  const { madkuduApiKey, openaiApiKey, mcpStatus, setMadkuduApiKey, setOpenaiApiKey, setMcpStatus } = useSettingsStore();
-  const [error, setError] = useState<string | null>(null);
+  const { 
+    madkuduApiKey: storedMadkuduApiKey,
+    openaiApiKey: storedOpenaiKey,
+    mcpStatus,
+    openaiStatus,
+    setMadkuduApiKey: saveMadkuduApiKey,
+    setOpenaiApiKey: saveOpenAIKey,
+    setMcpStatus,
+    setOpenaiStatus
+  } = useSettingsStore();
+  
+  const [madkuduApiKey, setMadkuduApiKey] = useState("");
+  const [openaiKey, setOpenaiKey] = useState("");
+  
+  const [mcpError, setMcpError] = useState("");
+  const [openaiError, setOpenaiError] = useState("");
 
-  const validateKeyMutation = api.mcp.validateKey.useMutation({
+  useEffect(() => {
+    setMadkuduApiKey(storedMadkuduApiKey);
+    setOpenaiKey(storedOpenaiKey);
+  }, [storedMadkuduApiKey, storedOpenaiKey]);
+
+  const validateMcpMutation = api.mcp.validateKey.useMutation({
     onSuccess: (data) => {
       if (data.success) {
-        setMcpStatus('valid');
-        setError(null);
+        setMcpStatus("valid");
+        saveMadkuduApiKey(madkuduApiKey);
+        setMcpError("");
       } else {
-        setMcpStatus('invalid');
-        setError(data.error ?? 'Validation failed');
+        setMcpStatus("invalid");
+        setMcpError(data.error ?? "MCP validation failed");
       }
     },
     onError: (err) => {
-      setMcpStatus('invalid');
-      setError(err.message);
+      setMcpStatus("invalid");
+      setMcpError(err.message);
     },
+    onMutate: () => {
+      setMcpStatus("validating");
+      setMcpError("");
+    }
   });
 
-  const handleValidate = async () => {
-    if (!madkuduApiKey) {
-      setError('MadKudu API Key is required');
-      return;
+  const validateOpenaiMutation = api.mcp.validateOpenAIKey.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        setOpenaiStatus("valid");
+        saveOpenAIKey(openaiKey);
+        setOpenaiError("");
+      } else {
+        setOpenaiStatus("invalid");
+        setOpenaiError(data.error ?? "OpenAI validation failed");
+      }
+    },
+    onError: (err) => {
+      setOpenaiStatus("invalid");
+      setOpenaiError(err.message);
+    },
+    onMutate: () => {
+      setOpenaiStatus("validating");
+      setOpenaiError("");
     }
+  });
 
-    setMcpStatus('validating');
-    setError(null);
-    validateKeyMutation.mutate({ apiKey: madkuduApiKey });
+  const handleValidateMcp = () => {
+    validateMcpMutation.mutate({ apiKey: madkuduApiKey });
   };
 
+  const handleValidateOpenai = () => {
+    validateOpenaiMutation.mutate({ apiKey: openaiKey });
+  };
+  
+  const getStatusComponent = (status: MCPStatus) => {
+    switch (status) {
+      case "valid":
+        return <span className="text-green-600">✓ Valid & Saved</span>;
+      case "invalid":
+        return <span className="text-red-600">✗ Invalid</span>;
+      case "validating":
+        return <span className="text-yellow-600">Validating...</span>;
+      default:
+        return null;
+    }
+  }
+
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="mb-8 text-2xl font-bold">Settings</h1>
-      
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <label htmlFor="madkudu-key" className="block font-medium">
-            MadKudu API Key
-          </label>
-          <input
-            id="madkudu-key"
-            type="password"
-            value={madkuduApiKey}
-            onChange={(e) => setMadkuduApiKey(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-black"
-            placeholder="Enter your MadKudu API key"
-          />
+    <div className="container mx-auto p-4">
+      <div className="space-y-8">
+        <div>
+          <h2 className="mb-4 text-xl font-bold">MadKudu MCP Settings</h2>
+          <div className="space-y-4 rounded-lg border p-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                MCP API Key
+              </label>
+              <input
+                type="password"
+                value={madkuduApiKey}
+                onChange={(e) => setMadkuduApiKey(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+                placeholder="Enter your MCP API key"
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleValidateMcp}
+                disabled={!madkuduApiKey || validateMcpMutation.isPending}
+                className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
+              >
+                {validateMcpMutation.isPending ? "Validating..." : "Validate & Save"}
+              </button>
+              <div>{getStatusComponent(mcpStatus)}</div>
+            </div>
+            {mcpError && <div className="text-sm text-red-600">{mcpError}</div>}
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="openai-key" className="block font-medium">
-            OpenAI API Key
-          </label>
-          <input
-            id="openai-key"
-            type="password"
-            value={openaiApiKey}
-            onChange={(e) => setOpenaiApiKey(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-black"
-            placeholder="Enter your OpenAI API key"
-          />
-        </div>
-
-        <div className="space-y-4">
-          <button
-            onClick={handleValidate}
-            disabled={mcpStatus === 'validating'}
-            className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:bg-gray-400"
-          >
-            {mcpStatus === 'validating' ? 'Validating...' : 'Validate Keys'}
-          </button>
-
-          {error && (
-            <div className="rounded-md bg-red-100 p-4 text-red-700">
-              {error}
+        <div>
+          <h2 className="mb-4 text-xl font-bold">OpenAI Settings</h2>
+          <div className="space-y-4 rounded-lg border p-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                OpenAI API Key
+              </label>
+              <input
+                type="password"
+                value={openaiKey}
+                onChange={(e) => setOpenaiKey(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+                placeholder="Enter your OpenAI API key"
+              />
             </div>
-          )}
-
-          {mcpStatus === 'valid' && (
-            <div className="rounded-md bg-green-100 p-4 text-green-700">
-              API keys validated successfully!
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleValidateOpenai}
+                disabled={!openaiKey || validateOpenaiMutation.isPending}
+                className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
+              >
+                {validateOpenaiMutation.isPending ? "Validating..." : "Validate & Save"}
+              </button>
+              <div>{getStatusComponent(openaiStatus)}</div>
             </div>
-          )}
+            {openaiError && <div className="text-sm text-red-600">{openaiError}</div>}
+          </div>
         </div>
       </div>
     </div>

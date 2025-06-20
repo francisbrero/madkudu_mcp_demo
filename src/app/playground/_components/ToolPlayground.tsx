@@ -1,159 +1,228 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSettingsStore } from '~/stores/settings-store';
 import { api } from '~/trpc/react';
+import type { TRPCClientErrorLike } from '@trpc/client';
+import type { AppRouter } from '~/server/api/root';
+import Link from 'next/link';
 
-interface ToolProperty {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object';
-}
+// Infer the tool type from the tRPC query's output
+type Tool = NonNullable<ReturnType<typeof api.mcp.getTools.useQuery>['data']>[number];
 
-interface ToolSchema {
-  properties: Record<string, ToolProperty>;
+/**
+ * Generates a placeholder JSON object from a tool's input schema.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function createParamsPlaceholder(tool: any | undefined): string {
+  if (!tool?.inputSchema?.properties) {
+    return '{}';
+  }
+  const placeholder: Record<string, unknown> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const [key, value] of Object.entries(tool.inputSchema.properties as any)) {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore - value has type any, which is fine for this placeholder generation
+    const prop = value as { type: string };
+    switch (prop.type) {
+      case 'string':
+        placeholder[key] = '';
+        break;
+      case 'number':
+        placeholder[key] = 0;
+        break;
+      case 'boolean':
+        placeholder[key] = false;
+        break;
+      case 'array':
+        placeholder[key] = [];
+        break;
+      case 'object':
+        placeholder[key] = {};
+        break;
+      default:
+        placeholder[key] = null;
+    }
+  }
+  return JSON.stringify(placeholder, null, 2);
 }
 
 export function ToolPlayground() {
-  const mcpStatus = useSettingsStore((state) => state.mcpStatus);
-  const [selectedTool, setSelectedTool] = useState('');
-  const [payload, setPayload] = useState('');
+  const { mcpStatus, madkuduApiKey } = useSettingsStore();
+  const [selectedToolName, setSelectedToolName] = useState<string>('');
+  const [params, setParams] = useState<string>('{}');
   const [result, setResult] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [isClient, setIsClient] = useState(false);
 
-  // Fetch available tools
-  const { data: toolsData, isLoading: isLoadingTools } = api.mcp.getTools.useQuery(
-    undefined,
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const {
+    data: tools,
+    isLoading: isLoadingTools,
+    error: toolsError,
+  } = api.mcp.getTools.useQuery(
+    { apiKey: madkuduApiKey },
     {
-      enabled: mcpStatus === 'valid',
-    }
+      enabled: mcpStatus === 'valid' && isClient && !!madkuduApiKey,
+      refetchOnWindowFocus: false,
+    },
   );
 
-  // Execute tool mutation
-  const { mutate: executeTool, isLoading: isExecuting } = api.mcp.runTool.useMutation({
+  const executeTool = api.mcp.runTool.useMutation({
     onSuccess: (data) => {
-      setResult(JSON.stringify(data.result, null, 2));
+      setResult(JSON.stringify(data, null, 2));
       setError('');
     },
-    onError: (err) => {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+    onError: (error: TRPCClientErrorLike<AppRouter>) => {
+      setError(error.message);
       setResult('');
     },
   });
 
-  // Handle tool selection
-  const handleToolSelect = (toolName: string) => {
-    setSelectedTool(toolName);
-    const tool = toolsData?.tools.find((t) => t.name === toolName);
-    if (tool) {
-      // Create a default payload based on the tool's schema
-      const defaultPayload: Record<string, unknown> = {};
-      Object.entries(tool.inputSchema.properties as Record<string, ToolProperty>).forEach(([key, value]) => {
-        switch (value.type) {
-          case 'string':
-            defaultPayload[key] = '';
-            break;
-          case 'number':
-            defaultPayload[key] = 0;
-            break;
-          case 'boolean':
-            defaultPayload[key] = false;
-            break;
-          case 'array':
-            defaultPayload[key] = [];
-            break;
-          case 'object':
-            defaultPayload[key] = {};
-            break;
-        }
+  const handleToolChange = (toolName: string) => {
+    setSelectedToolName(toolName);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const selectedTool = tools?.find((t: any) => t.name === toolName);
+    setParams(createParamsPlaceholder(selectedTool));
+    setResult('');
+    setError('');
+  };
+
+  const handleExecute = () => {
+    try {
+      const parsedParams = JSON.parse(params) as Record<string, unknown>;
+      executeTool.mutate({
+        apiKey: madkuduApiKey,
+        toolId: selectedToolName,
+        params: parsedParams,
       });
-      setPayload(JSON.stringify(defaultPayload, null, 2));
+    } catch (e) {
+      setError('Invalid JSON in parameters.');
+      setResult('');
     }
   };
 
-  // Handle execution
-  const handleExecute = () => {
-    try {
-      const parsedPayload = JSON.parse(payload);
-      executeTool({
-        name: selectedTool,
-        arguments: parsedPayload,
-      });
-    } catch (err) {
-      setError('Invalid JSON payload');
-    }
-  };
+  if (!isClient) {
+    return null; // Render nothing on the server
+  }
 
   if (mcpStatus !== 'valid') {
     return (
-      <div className="p-4">
-        <div className="rounded-lg bg-yellow-50 p-4 text-yellow-800">
-          Please validate your MCP connection in the Settings page before using the playground.
+      <div className="flex h-full items-center justify-center p-4">
+        <div className="rounded-lg bg-yellow-100/80 p-6 text-center text-yellow-900 shadow-md ring-1 ring-yellow-200">
+          <h3 className="font-semibold">Connection Not Validated</h3>
+          <p className="mt-2">
+            Please go to the{' '}
+            <Link href="/settings" className="font-medium text-yellow-950 underline hover:text-yellow-700">
+              Settings page
+            </Link>{' '}
+            to validate your MadKudu API key.
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <div>
-        <label className="mb-2 block font-medium">Select Tool</label>
-        <select
-          className="w-full rounded-md border border-gray-300 p-2"
-          value={selectedTool}
-          onChange={(e) => handleToolSelect(e.target.value)}
-          disabled={isLoadingTools ?? false}
-        >
-          <option value="">Select a tool...</option>
-          {toolsData?.tools.map((tool) => (
-            <option key={tool.name} value={tool.name}>
-              {tool.name}
-            </option>
-          ))}
-        </select>
-      </div>
+    <div className="h-full w-full overflow-y-auto">
+      <div className="container mx-auto max-w-4xl space-y-6 p-4 md:p-8">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-800">
+            MCP Tool Playground
+          </h1>
+          <p className="text-gray-600">
+            Select a tool, provide the required parameters in JSON format, and
+            execute it against the live MCP server.
+          </p>
+        </div>
 
-      {selectedTool && (
-        <>
+        <div className="grid grid-cols-1 gap-6">
           <div>
-            <label className="mb-2 block font-medium">Tool Description</label>
-            <div className="rounded-md bg-gray-50 p-3">
-              {toolsData?.tools.find((t) => t.name === selectedTool)?.description}
-            </div>
+            <label
+              htmlFor="tool-select"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Select Tool
+            </label>
+            <select
+              id="tool-select"
+              value={selectedToolName}
+              onChange={(e) => handleToolChange(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+              disabled={isLoadingTools || !tools}
+            >
+              <option value="" disabled>
+                {isLoadingTools
+                  ? 'Loading tools...'
+                  : 'Select a tool to run'}
+              </option>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {tools?.map((tool: any) => (
+                <option key={tool.name} value={tool.name}>
+                  {tool.annotations?.title ?? tool.name}
+                </option>
+              ))}
+            </select>
+            {toolsError && (
+              <p className="mt-2 text-sm text-red-600">
+                Failed to load tools: {toolsError.message}
+              </p>
+            )}
           </div>
 
           <div>
-            <label className="mb-2 block font-medium">Payload (JSON)</label>
+            <label
+              htmlFor="params-textarea"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Parameters (JSON)
+            </label>
             <textarea
-              className="h-48 w-full rounded-md border border-gray-300 font-mono p-2"
-              value={payload}
-              onChange={(e) => setPayload(e.target.value)}
-              placeholder="Enter JSON payload..."
+              id="params-textarea"
+              value={params}
+              onChange={(e) => setParams(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 font-mono text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              rows={8}
+              placeholder="Select a tool to see its parameters."
+              disabled={!selectedToolName}
             />
           </div>
+        </div>
 
+        <div>
           <button
-            className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:bg-blue-300"
+            type="button"
             onClick={handleExecute}
-            disabled={isExecuting ?? false || !selectedTool || !payload}
+            disabled={!selectedToolName || executeTool.isPending}
+            className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-indigo-300"
           >
-            {isExecuting ? 'Executing...' : 'Execute Tool'}
+            {executeTool.isPending ? 'Executing...' : 'Execute Tool'}
           </button>
+        </div>
 
-          {error && (
-            <div className="rounded-lg bg-red-50 p-4 text-red-800">
-              {error}
+        {executeTool.isError && (
+          <div className="rounded-md bg-red-50 p-4">
+            <h3 className="text-sm font-medium text-red-800">Error</h3>
+            <div className="mt-2 text-sm text-red-700">
+              <pre className="whitespace-pre-wrap break-all">{error}</pre>
             </div>
-          )}
+          </div>
+        )}
 
-          {result && (
-            <div>
-              <label className="mb-2 block font-medium">Result</label>
-              <pre className="overflow-auto rounded-md bg-gray-50 p-3 font-mono">
+        {executeTool.isSuccess && (
+          <div className="rounded-md bg-gray-50 p-4 ring-1 ring-gray-200">
+            <h3 className="text-sm font-medium text-gray-800">Result</h3>
+            <div className="mt-2 text-sm text-gray-700">
+              <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono">
                 {result}
               </pre>
             </div>
-          )}
-        </>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 } 
