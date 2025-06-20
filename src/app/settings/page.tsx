@@ -7,25 +7,25 @@ import { useSettingsStore, type MCPStatus } from '~/stores/settings-store';
 export default function SettingsPage() {
   const { 
     madkuduApiKey: storedMadkuduApiKey,
-    openaiApiKey: storedOpenaiKey,
+    openAIApiKey: storedOpenAIApiKey,
     mcpStatus,
     openaiStatus,
     setMadkuduApiKey: saveMadkuduApiKey,
-    setOpenaiApiKey: saveOpenAIKey,
+    setOpenAIApiKey: saveOpenAIApiKey,
     setMcpStatus,
     setOpenaiStatus
   } = useSettingsStore();
   
   const [madkuduApiKey, setMadkuduApiKey] = useState("");
-  const [openaiKey, setOpenaiKey] = useState("");
+  const [openAIApiKeyInput, setOpenAIApiKeyInput] = useState("");
   
   const [mcpError, setMcpError] = useState("");
   const [openaiError, setOpenaiError] = useState("");
 
   useEffect(() => {
     setMadkuduApiKey(storedMadkuduApiKey);
-    setOpenaiKey(storedOpenaiKey);
-  }, [storedMadkuduApiKey, storedOpenaiKey]);
+    setOpenAIApiKeyInput(storedOpenAIApiKey);
+  }, [storedMadkuduApiKey, storedOpenAIApiKey]);
 
   const validateMcpMutation = api.mcp.validateKey.useMutation({
     onSuccess: (data) => {
@@ -52,7 +52,7 @@ export default function SettingsPage() {
     onSuccess: (data) => {
       if (data.success) {
         setOpenaiStatus("valid");
-        saveOpenAIKey(openaiKey);
+        saveOpenAIApiKey(openAIApiKeyInput);
         setOpenaiError("");
       } else {
         setOpenaiStatus("invalid");
@@ -74,7 +74,7 @@ export default function SettingsPage() {
   };
 
   const handleValidateOpenai = () => {
-    validateOpenaiMutation.mutate({ apiKey: openaiKey });
+    validateOpenaiMutation.mutate({ apiKey: openAIApiKeyInput });
   };
   
   const getStatusComponent = (status: MCPStatus) => {
@@ -131,8 +131,8 @@ export default function SettingsPage() {
               </label>
               <input
                 type="password"
-                value={openaiKey}
-                onChange={(e) => setOpenaiKey(e.target.value)}
+                value={openAIApiKeyInput}
+                onChange={(e) => setOpenAIApiKeyInput(e.target.value)}
                 className="mt-1 block w-full rounded-md border border-gray-300 p-2"
                 placeholder="Enter your OpenAI API key"
               />
@@ -140,7 +140,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-4">
               <button
                 onClick={handleValidateOpenai}
-                disabled={!openaiKey || validateOpenaiMutation.isPending}
+                disabled={!openAIApiKeyInput || validateOpenaiMutation.isPending}
                 className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
               >
                 {validateOpenaiMutation.isPending ? "Validating..." : "Validate & Save"}

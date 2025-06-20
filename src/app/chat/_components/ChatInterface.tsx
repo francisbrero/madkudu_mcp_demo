@@ -12,7 +12,7 @@ import type {
 } from "openai/resources/chat";
 
 export function ChatInterface() {
-  const { openaiApiKey, madkuduApiKey, mcpStatus } = useSettingsStore();
+  const { openAIApiKey, madkuduApiKey, mcpStatus } = useSettingsStore();
   const [messages, setMessages] = useState<ChatCompletionMessageParam[]>([]);
   const [input, setInput] = useState("");
   const [isClient, setIsClient] = useState(false);
@@ -45,7 +45,7 @@ export function ChatInterface() {
     });
 
   const handleSend = () => {
-    if (input.trim() && madkuduApiKey && openaiApiKey) {
+    if (input.trim() && madkuduApiKey && openAIApiKey) {
       const userMessage: ChatCompletionMessageParam = {
         role: "user",
         content: input,
@@ -54,7 +54,7 @@ export function ChatInterface() {
       setMessages(newMessages);
       getChatResponse({
         messages: newMessages,
-        openaiApiKey,
+        openAIApiKey,
         madkuduApiKey,
       });
       setInput("");
@@ -65,7 +65,7 @@ export function ChatInterface() {
     return null;
   }
 
-  if (mcpStatus !== "valid" || !openaiApiKey) {
+  if (mcpStatus !== "valid" || !openAIApiKey) {
     return (
       <div className="flex h-full items-center justify-center p-4">
         <div className="rounded-lg bg-yellow-100/80 p-6 text-center text-yellow-900 shadow-md ring-1 ring-yellow-200">

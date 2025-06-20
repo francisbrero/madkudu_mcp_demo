@@ -5,11 +5,11 @@ export type MCPStatus = 'unvalidated' | 'validating' | 'valid' | 'invalid';
 
 interface SettingsState {
   madkuduApiKey: string;
-  openaiApiKey: string;
+  openAIApiKey: string;
   mcpStatus: MCPStatus;
   openaiStatus: MCPStatus;
   setMadkuduApiKey: (key: string) => void;
-  setOpenaiApiKey: (key: string) => void;
+  setOpenAIApiKey: (key: string) => void;
   setMcpStatus: (status: MCPStatus) => void;
   setOpenaiStatus: (status: MCPStatus) => void;
 }
@@ -18,11 +18,11 @@ export const useSettingsStore = create(
   persist<SettingsState>(
     (set) => ({
       madkuduApiKey: '',
-      openaiApiKey: '',
+      openAIApiKey: '',
       mcpStatus: 'unvalidated',
       openaiStatus: 'unvalidated',
       setMadkuduApiKey: (key) => set({ madkuduApiKey: key }),
-      setOpenaiApiKey: (key) => set({ openaiApiKey: key }),
+      setOpenAIApiKey: (key) => set({ openAIApiKey: key }),
       setMcpStatus: (status) => set({ mcpStatus: status }),
       setOpenaiStatus: (status) => set({ openaiStatus: status }),
     }),
