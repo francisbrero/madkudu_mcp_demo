@@ -10,6 +10,8 @@ import type {
   ChatCompletion,
   ChatCompletionMessageParam,
 } from "openai/resources/chat";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export function ChatInterface() {
   const { openAIApiKey, madkuduApiKey, mcpStatus } = useSettingsStore();
@@ -95,13 +97,15 @@ export function ChatInterface() {
             }`}
           >
             <div
-              className={`max-w-prose rounded-lg px-4 py-2 ${
+              className={`prose dark:prose-invert max-w-none rounded-lg px-4 py-2 ${
                 msg.role === "user"
                   ? "bg-blue-600 text-white"
                   : "bg-gray-200 text-gray-800"
               }`}
             >
-              {msg.content}
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {msg.content}
+              </ReactMarkdown>
             </div>
           </div>
         ))}

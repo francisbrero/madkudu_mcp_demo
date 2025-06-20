@@ -7,6 +7,8 @@ import type { TRPCClientErrorLike } from "@trpc/client";
 import type { AppRouter } from "~/server/api/root";
 import Link from "next/link";
 import type { ChatCompletionMessageParam } from "openai/resources/chat";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type AgentChatInterfaceProps = {
   agentId: string;
@@ -93,14 +95,15 @@ export default function AgentChatInterface({ agentId }: AgentChatInterfaceProps)
               }`}
             >
               <div
-                className={`max-w-prose rounded-lg px-4 py-2 ${
+                className={`prose dark:prose-invert max-w-none rounded-lg px-4 py-2 ${
                   msg.role === "user"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-200 text-gray-800"
                 }`}
               >
-                {/* We can add markdown rendering here later */}
-                {msg.content}
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {msg.content}
+                </ReactMarkdown>
               </div>
             </div>
           )
