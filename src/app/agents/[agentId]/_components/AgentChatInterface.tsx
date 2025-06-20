@@ -6,29 +6,25 @@ import { api } from "~/trpc/react";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import type { AppRouter } from "~/server/api/root";
 import Link from "next/link";
-import type {
-  ChatCompletion,
-  ChatCompletionMessageParam,
-} from "openai/resources/chat";
+import type { ChatCompletionMessageParam } from "openai/resources/chat";
 
-export function ChatInterface() {
+type AgentChatInterfaceProps = {
+  agentId: string;
+};
+
+export default function AgentChatInterface({ agentId }: AgentChatInterfaceProps) {
   const { openAIApiKey, madkuduApiKey, mcpStatus } = useSettingsStore();
   const [messages, setMessages] = useState<ChatCompletionMessageParam[]>([]);
   const [input, setInput] = useState("");
   const [model, setModel] = useState<"gpt-4o-mini" | "gpt-4o" | "o3-mini" | "o3">("gpt-4o-mini");
-  const [isClient, setIsClient] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const { mutate: getChatResponse, isPending: isLoading } =
-    api.mcp.getChatResponse.useMutation<ChatCompletion | null>({
+  const { mutate: getAgentChatResponse, isPending: isLoading } =
+    api.agent.getAgentChatResponse.useMutation({
       onSuccess: (data) => {
         if (data) {
           setMessages((prev) => [...prev, data]);
@@ -51,10 +47,15 @@ export function ChatInterface() {
         role: "user",
         content: input,
       };
-      const newMessages = [...messages, userMessage];
-      setMessages(newMessages);
-      getChatResponse({
-        messages: newMessages,
+      // We don't send the system prompt to the backend
+      const newMessages = messages.filter(msg => msg.role !== 'system');
+      const updatedMessages = [...newMessages, userMessage];
+      
+      setMessages(updatedMessages);
+
+      getAgentChatResponse({
+        agentId,
+        messages: updatedMessages,
         openAIApiKey,
         madkuduApiKey,
         model,
@@ -62,18 +63,14 @@ export function ChatInterface() {
       setInput("");
     }
   };
-
-  if (!isClient) {
-    return null;
-  }
-
+  
   if (mcpStatus !== "valid" || !openAIApiKey) {
     return (
-      <div className="flex h-full items-center justify-center p-4">
+      <div className="flex-grow flex items-center justify-center p-4">
         <div className="rounded-lg bg-yellow-100/80 p-6 text-center text-yellow-900 shadow-md ring-1 ring-yellow-200">
           <h3 className="font-semibold">Configuration Incomplete</h3>
           <p className="mt-2">
-            Please ensure your MadKudu and OpenAI API keys are validated on the{" "}
+            This agent requires valid API keys. Please go to the{" "}
             <Link href="/settings" className="font-medium text-yellow-950 underline hover:text-yellow-700">
               Settings page
             </Link>
@@ -85,25 +82,28 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-white">
+    <div className="flex h-full flex-col bg-white flex-grow">
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`flex ${
-              msg.role === "user" ? "justify-end" : "justify-start"
-            }`}
-          >
+          msg.role !== 'system' && (
             <div
-              className={`max-w-prose rounded-lg px-4 py-2 ${
-                msg.role === "user"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-800"
+              key={index}
+              className={`flex ${
+                msg.role === "user" ? "justify-end" : "justify-start"
               }`}
             >
-              {msg.content}
+              <div
+                className={`max-w-prose rounded-lg px-4 py-2 ${
+                  msg.role === "user"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-800"
+                }`}
+              >
+                {/* We can add markdown rendering here later */}
+                {msg.content}
+              </div>
             </div>
-          </div>
+          )
         ))}
         {isLoading && (
           <div className="flex justify-start">
@@ -153,7 +153,7 @@ export function ChatInterface() {
                 }
               }}
               className="w-full rounded-md border-gray-300 py-2 pl-3 pr-10 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              placeholder="Type your message..."
+              placeholder="Chat with this agent..."
               disabled={isLoading}
             />
           </div>

@@ -136,6 +136,7 @@ export const mcpRouter = createTRPCRouter({
         ),
         openAIApiKey: z.string(),
         madkuduApiKey: z.string(),
+        model: z.enum(["gpt-4o-mini", "gpt-4o", "o3-mini", "o3"]),
       }),
     )
     .mutation(async ({ input }): Promise<ChatCompletionMessageParam> => {
@@ -171,7 +172,7 @@ export const mcpRouter = createTRPCRouter({
         });
 
         const completion = await openai.chat.completions.create({
-          model: "gpt-4-turbo",
+          model: input.model,
           messages: input.messages as ChatCompletionMessageParam[],
           tools: openAiTools.length > 0 ? openAiTools : undefined,
           tool_choice: openAiTools.length > 0 ? "auto" : undefined,
@@ -214,7 +215,7 @@ export const mcpRouter = createTRPCRouter({
                 tool_call_id: toolCall.id,
                 role: "tool",
                 name: functionName,
-                content: JSON.stringify(result as any),
+                content: JSON.stringify(result),
               });
             } catch (runError) {
               const errorMessage =
@@ -230,7 +231,7 @@ export const mcpRouter = createTRPCRouter({
 
           // Make a second API call with the tool results
           const secondCompletion = await openai.chat.completions.create({
-            model: "gpt-4-turbo",
+            model: input.model,
             messages: [
               ...(input.messages as ChatCompletionMessageParam[]),
               responseMessage,
@@ -238,12 +239,14 @@ export const mcpRouter = createTRPCRouter({
             ],
           });
 
-          return (
-            secondCompletion.choices[0]?.message ?? {
-              role: "assistant",
-              content: "Error: No response from OpenAI after tool call.",
-            }
-          );
+          const message = secondCompletion.choices[0]?.message;
+          if (message) {
+            return message;
+          }
+          return {
+            role: "assistant",
+            content: "Error: No response from OpenAI after tool call.",
+          };
         }
 
         // If no tool calls, return the direct response

@@ -180,3 +180,55 @@ This task involves creating the Chat page, where users can have a conversation w
 
 **Validation:**
 Run `pnpm build`. After configuring keys in Settings, navigate to the Chat page. You should be able to have a conversation. Test it by asking a question that requires a tool, e.g., "Can you tell me about madkudu.com?". The app should display a response generated from the live tool result.
+
+### **Task 6: Implement the Agent Library Page**
+
+**Context:**
+This task creates the "Agents" page, where users can create, manage, and chat with specialized agents defined by a "master prompt" document. These agents will be stored in the shared SQLite database.
+
+**Instructions:**
+1.  **Update Database Schema:**
+    * In `prisma/schema.prisma`, add a new model for `Agent`.
+        ```prisma
+        model Agent {
+          id          String   @id @default(cuid())
+          name        String
+          description String
+          prompt      String   // Will store the full Markdown "master prompt"
+          createdAt   DateTime @default(now())
+          updatedAt   DateTime @updatedAt
+        }
+        ```
+    * Run `pnpm prisma migrate dev --name add-agent-model` to apply the changes to your SQLite database.
+
+2.  **Create Agent Management UI:**
+    * The main page at `/agents` should display a list of existing agents fetched from the database and a "Create New Agent" button.
+    * Clicking the create button should show a form (e.g., in a modal or on a new route `/agents/new`) with fields for `Name`, `Description`, and a large `textarea` for the `Master Prompt`.
+    * The user will paste the entire Markdown-formatted agent definition into the `textarea`.
+
+3.  **Implement Agent tRPC Procedures:**
+    * Create a new router file `src/server/api/routers/agent.ts`.
+    * Add the following procedures:
+        * `create`: Takes `name`, `description`, and `prompt` strings. Saves a new agent to the database.
+        * `list`: Fetches all agents from the database.
+        * `getById`: Fetches a single agent by its ID.
+        * `getAgentChatResponse`: This is the core logic. It will:
+            * Accept an `agentId` and the `messages` array.
+            * Fetch the agent's full `prompt` from the database.
+            * Parse the prompt to find all `mcp_...` tool names mentioned.
+            * Fetch the full definitions for only those specific tools from the MCP client.
+            * Call the OpenAI API, using the agent's `prompt` as the system message and providing the filtered list of tools.
+            * Handle the tool-calling loop just like in Task 5.
+    * Add the new `agentRouter` to `src/server/api/root.ts`.
+
+4.  **Build Agent Chat Interface:**
+    * When a user clicks on an agent from the list (or after successfully creating one), navigate them to a dynamic route like `/agents/[agentId]`.
+    * This page will use the `agentId` from the URL to fetch the agent's details.
+    * It will feature a chat interface identical in function to the general one, but it will call the `getAgentChatResponse` mutation, passing the specific `agentId`.
+
+**Documentation Links:**
+* [Prisma Schema Reference](https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference)
+* [Next.js Dynamic Routes](https://nextjs.org/docs/app/building-your-application/routing/dynamic-routes)
+
+**Validation:**
+Run `pnpm build`. You should be able to create a new agent by pasting the provided Markdown example into the creation form. After saving, you should be redirected to a chat page for that agent. Interacting with the agent should trigger the specialized prompt and correctly use the tools defined within it. The new agent should also appear in the list on the main `/agents` page.

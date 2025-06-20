@@ -9,3 +9,12 @@ datasource db {
     provider = "sqlite"
     url      = "file:./dev.db"
 }
+
+model Agent {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  prompt      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
