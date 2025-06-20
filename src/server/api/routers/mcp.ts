@@ -258,4 +258,59 @@ export const mcpRouter = createTRPCRouter({
         });
       }
     }),
+
+  summarizeJson: publicProcedure
+    .input(
+      z.object({
+        jsonContent: z.string(),
+        openAIApiKey: z.string(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      if (!input.openAIApiKey) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "OpenAI API key is not set.",
+        });
+      }
+
+      const openai = new OpenAI({ apiKey: input.openAIApiKey });
+
+      try {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are an expert at summarizing JSON data. Your goal is to provide a clear, concise, and human-readable summary of the provided JSON content in Markdown format.",
+            },
+            {
+              role: "user",
+              content: `Please summarize the following JSON data. Focus on extracting the most important information and presenting it in a well-structured Markdown document:\n\n\`\`\`json\n${input.jsonContent}\n\`\`\``,
+            },
+          ],
+          temperature: 0.2,
+        });
+
+        const summary = completion.choices[0]?.message?.content;
+
+        if (!summary) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "No summary from OpenAI",
+          });
+        }
+
+        return { summary };
+      } catch (error) {
+        console.error("JSON summarization error:", error);
+        const message =
+          error instanceof Error ? error.message : "An unknown error occurred";
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to summarize JSON: ${message}`,
+        });
+      }
+    }),
 }); 
