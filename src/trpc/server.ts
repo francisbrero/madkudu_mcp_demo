@@ -6,7 +6,6 @@ import { type AppRouter } from "~/server/api/root";
 import { transformer } from "./shared";
 
 export const api = createTRPCProxyClient<AppRouter>({
-  transformer,
   links: [
     loggerLink({
       enabled: (op) =>
@@ -14,10 +13,12 @@ export const api = createTRPCProxyClient<AppRouter>({
         (op.direction === "down" && op.result instanceof Error),
     }),
     httpBatchLink({
+      transformer,
       url: `${getBaseUrl()}/api/trpc`,
-      headers() {
+      async headers() {
         const h = new Headers();
-        headers().forEach((value, key) => h.set(key, value));
+        const requestHeaders = await headers();
+        requestHeaders.forEach((value, key) => h.set(key, value));
         return h;
       },
     }),
