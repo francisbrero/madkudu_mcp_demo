@@ -4,19 +4,21 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { api } from "~/trpc/react";
 import AgentChatInterface from "./_components/AgentChatInterface";
+import { use } from "react";
 
 type AgentPageProps = {
-  params: {
+  params: Promise<{
     agentId: string;
-  };
+  }>;
 };
 
 export default function AgentPage({ params }: AgentPageProps) {
+  const resolvedParams = use(params);
   const {
     data: agent,
     isLoading,
     error,
-  } = api.agent.getById.useQuery({ id: params.agentId });
+  } = api.agent.getById.useQuery({ id: resolvedParams.agentId });
 
   if (isLoading) {
     return <div>Loading agent...</div>;

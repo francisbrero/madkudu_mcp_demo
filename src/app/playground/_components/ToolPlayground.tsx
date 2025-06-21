@@ -10,16 +10,25 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ClipboardCopy, Check } from 'lucide-react';
 
-// Infer the tool type from the tRPC query's output
-type Tool = NonNullable<
-  ReturnType<typeof api.mcp.getTools.useQuery>['data']
->[number];
+// Define the tool type based on the expected structure
+type Tool = {
+  name: string;
+  description?: string;
+  inputSchema?: {
+    type: string;
+    properties?: Record<string, unknown>;
+    required?: string[];
+  };
+  annotations?: {
+    title?: string;
+  };
+};
 
 /**
  * Generates a placeholder JSON object from a tool's input schema.
  */
 function createParamsPlaceholder(tool: Tool | undefined): string {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+   
   if (!tool?.inputSchema?.properties) {
     return '{}';
   }
@@ -27,8 +36,8 @@ function createParamsPlaceholder(tool: Tool | undefined): string {
   // The linter struggles with the complex type of `tool.inputSchema.properties`
   // which comes from the MCP SDK and JSONSchema. We know it's a record of objects
   // with a 'type' property, so we cast it to work with it.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const [key, value] of Object.entries(tool.inputSchema.properties as any)) {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  for (const [key, value] of Object.entries(tool.inputSchema.properties)) {
     const prop = value as { type: string };
     switch (prop.type) {
       case 'string':
@@ -105,10 +114,7 @@ export function ToolPlayground() {
 
   const handleToolChange = (toolName: string) => {
     setSelectedToolName(toolName);
-    // The linter struggles to infer the type of `t` here from the `tools` array
-    // which is derived from a tRPC query. Explicitly casting to `any` for find.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const selectedTool = tools?.find((t: any) => t.name === toolName);
+    const selectedTool = tools?.find((t) => t.name === toolName) as Tool | undefined;
     setParams(createParamsPlaceholder(selectedTool));
     setResult('');
     setError('');
@@ -123,7 +129,7 @@ export function ToolPlayground() {
         toolId: selectedToolName,
         params: parsedParams,
       });
-    } catch (e) {
+    } catch {
       setError('Invalid JSON in parameters.');
       setResult('');
       setSummary('');
@@ -158,13 +164,13 @@ export function ToolPlayground() {
   if (mcpStatus !== 'valid') {
     return (
       <div className="flex h-full items-center justify-center p-4">
-        <div className="rounded-lg bg-yellow-100/80 p-6 text-center text-yellow-900 shadow-md ring-1 ring-yellow-200">
-          <h3 className="font-semibold">Connection Not Validated</h3>
-          <p className="mt-2">
+        <div className="glass-card rounded-lg p-6 text-center">
+          <h3 className="font-semibold text-yellow-500">Connection Not Validated</h3>
+          <p className="mt-2 text-muted-foreground">
             Please go to the{' '}
             <Link
               href="/settings"
-              className="font-medium text-yellow-950 underline hover:text-yellow-700"
+              className="font-medium text-primary hover:underline"
             >
               Settings page
             </Link>{' '}
@@ -177,22 +183,13 @@ export function ToolPlayground() {
 
   return (
     <div className="h-full w-full overflow-y-auto">
-      <div className="container mx-auto max-w-4xl space-y-6 p-4 md:p-8">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-800">
-            MCP Tool Playground
-          </h1>
-          <p className="text-gray-600">
-            Select a tool, provide the required parameters in JSON format, and
-            execute it against the live MCP server.
-          </p>
-        </div>
+      <div className="container mx-auto max-w-4xl space-y-6 animate-fade-in">
 
         <div className="grid grid-cols-1 gap-6">
-          <div>
+          <div className="glass-card p-6 rounded-xl">
             <label
               htmlFor="tool-select"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium mb-2"
             >
               Select Tool
             </label>
@@ -200,14 +197,13 @@ export function ToolPlayground() {
               id="tool-select"
               value={selectedToolName}
               onChange={(e) => handleToolChange(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+              className="input-field w-full"
               disabled={isLoadingTools || !tools}
             >
               <option value="" disabled>
                 {isLoadingTools ? 'Loading tools...' : 'Select a tool to run'}
               </option>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {tools?.map((tool: any) => (
+              {tools?.map((tool) => (
                 <option key={tool.name} value={tool.name}>
                   {tool.annotations?.title ?? tool.name}
                 </option>
@@ -220,10 +216,10 @@ export function ToolPlayground() {
             )}
           </div>
 
-          <div>
+          <div className="glass-card p-6 rounded-xl">
             <label
               htmlFor="params-textarea"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium mb-2"
             >
               Parameters (JSON)
             </label>
@@ -231,7 +227,7 @@ export function ToolPlayground() {
               id="params-textarea"
               value={params}
               onChange={(e) => setParams(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 font-mono text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              className="input-field w-full font-mono text-sm"
               rows={8}
               placeholder="Select a tool to see its parameters."
               disabled={!selectedToolName}
@@ -244,16 +240,16 @@ export function ToolPlayground() {
             type="button"
             onClick={handleExecute}
             disabled={!selectedToolName || executeTool.isPending}
-            className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-indigo-300"
+            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {executeTool.isPending ? 'Executing...' : 'Execute Tool'}
           </button>
         </div>
 
         {error && !summarizeJson.isPending && (
-          <div className="rounded-md bg-red-50 p-4">
-            <h3 className="text-sm font-medium text-red-800">Error</h3>
-            <div className="mt-2 text-sm text-red-700">
+          <div className="glass-card rounded-xl p-4 border-red-500/20">
+            <h3 className="text-sm font-medium text-red-400">Error</h3>
+            <div className="mt-2 text-sm text-red-300">
               <pre className="whitespace-pre-wrap break-all">{error}</pre>
             </div>
           </div>
@@ -261,15 +257,15 @@ export function ToolPlayground() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {executeTool.isSuccess && result && (
-            <div className="space-y-4 rounded-md bg-gray-50 p-4 ring-1 ring-gray-200">
+            <div className="glass-card space-y-4 rounded-xl p-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-gray-800">Result</h3>
+                <h3 className="text-sm font-medium">Result</h3>
                 {openaiStatus === 'valid' && (
                   <button
                     type="button"
                     onClick={handleSummarize}
                     disabled={summarizeJson.isPending}
-                    className="inline-flex items-center rounded-md border border-transparent bg-teal-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-teal-300"
+                    className="btn-secondary text-xs px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {summarizeJson.isPending
                       ? 'Summarizing...'
@@ -277,8 +273,8 @@ export function ToolPlayground() {
                   </button>
                 )}
               </div>
-              <div className="mt-2 text-sm text-gray-700">
-                <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono">
+              <div className="mt-2 text-sm">
+                <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-muted-foreground">
                   {result}
                 </pre>
               </div>
@@ -287,8 +283,8 @@ export function ToolPlayground() {
 
           <div>
             {summarizeJson.isPending && (
-              <div className="flex h-full animate-pulse items-center justify-center rounded-md bg-blue-50 p-4">
-                <p className="text-sm font-medium text-blue-700">
+              <div className="glass-card flex h-full items-center justify-center rounded-xl p-6 animate-pulse-glow">
+                <p className="text-sm font-medium text-primary">
                   AI is summarizing...
                 </p>
               </div>
@@ -296,10 +292,10 @@ export function ToolPlayground() {
 
             {summary && !summarizeJson.isPending && (
               <div className="relative h-full">
-                <div className="prose prose-sm h-full max-w-none rounded-md border border-gray-200 bg-white p-4">
+                <div className="glass-card prose prose-sm prose-invert h-full max-w-none rounded-xl p-6">
                   <button
                     onClick={handleCopy}
-                    className="absolute right-2 top-2 rounded-md bg-gray-100 p-1.5 text-gray-600 hover:bg-gray-200 hover:text-gray-800"
+                    className="absolute right-2 top-2 rounded-md bg-white/10 p-1.5 text-muted-foreground hover:bg-white/20 hover:text-foreground transition-colors"
                     title="Copy to clipboard"
                   >
                     {isCopied ? (

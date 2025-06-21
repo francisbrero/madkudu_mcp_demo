@@ -6,7 +6,7 @@ import { api } from "~/trpc/react";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import type { AppRouter } from "~/server/api/root";
 import Link from "next/link";
-import type { ChatCompletionMessageParam } from "openai/resources/chat";
+import type { ChatCompletionMessageParam } from "openai/resources/index.js";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -57,7 +57,13 @@ export default function AgentChatInterface({ agentId }: AgentChatInterfaceProps)
 
       getAgentChatResponse({
         agentId,
-        messages: updatedMessages,
+        messages: updatedMessages.map(msg => ({
+          role: msg.role as "user" | "assistant" | "system" | "tool",
+          content: typeof msg.content === 'string' ? msg.content : '',
+          ...('name' in msg && msg.name && { name: msg.name }),
+          ...('tool_calls' in msg && msg.tool_calls && { tool_calls: msg.tool_calls }),
+          ...('tool_call_id' in msg && msg.tool_call_id && { tool_call_id: msg.tool_call_id }),
+        })),
         openAIApiKey,
         madkuduApiKey,
         model,
@@ -102,7 +108,7 @@ export default function AgentChatInterface({ agentId }: AgentChatInterfaceProps)
                 }`}
               >
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {msg.content}
+                  {typeof msg.content === 'string' ? msg.content : ''}
                 </ReactMarkdown>
               </div>
             </div>

@@ -1,14 +1,25 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import OpenAI from "openai";
-import { env } from "~/env";
 import { TRPCError } from "@trpc/server";
 import type {
-  ChatCompletion,
   ChatCompletionMessageParam,
-} from "openai/resources/chat";
+} from "openai/resources/index.js";
 import { initializeMcpClient, clearMcpClient } from "~/server/api/mcp-client";
-import type { Tool } from "@modelcontextprotocol/sdk";
+// Define Tool type locally to avoid import issues
+type Tool = {
+  name: string;
+  description?: string;
+  inputSchema?: {
+    type: string;
+    properties?: Record<string, unknown>;
+    required?: string[];
+  };
+  annotations?: {
+    title?: string;
+    [key: string]: unknown;
+  };
+};
 import { getDisplayName } from "@modelcontextprotocol/sdk/shared/metadataUtils.js";
 
 interface OpenAIResponse {
@@ -195,14 +206,13 @@ export const mcpRouter = createTRPCRouter({
             const functionName = toolCall.function.name;
             let functionArgs: Record<string, unknown> = {};
             try {
-              functionArgs = JSON.parse(toolCall.function.arguments);
-            } catch (error) {
+              functionArgs = JSON.parse(toolCall.function.arguments) as Record<string, unknown>;
+            } catch {
               toolMessages.push({
                 tool_call_id: toolCall.id,
-                role: "tool",
-                name: functionName,
+                role: "tool" as const,
                 content: `Error: Invalid arguments provided. Expected a valid JSON object string.`,
-              });
+              } as ChatCompletionMessageParam);
               continue;
             }
 
@@ -213,19 +223,17 @@ export const mcpRouter = createTRPCRouter({
               });
               toolMessages.push({
                 tool_call_id: toolCall.id,
-                role: "tool",
-                name: functionName,
+                role: "tool" as const,
                 content: JSON.stringify(result),
-              });
+              } as ChatCompletionMessageParam);
             } catch (runError) {
               const errorMessage =
                 runError instanceof Error ? runError.message : "Unknown error";
               toolMessages.push({
                 tool_call_id: toolCall.id,
-                role: "tool",
-                name: functionName,
+                role: "tool" as const,
                 content: `Error: ${errorMessage}`,
-              });
+              } as ChatCompletionMessageParam);
             }
           }
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '~/trpc/react';
 import { useSettingsStore, type MCPStatus } from '~/stores/settings-store';
+import { Settings, Sparkles, Key, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
 export default function SettingsPage() {
   const { 
@@ -80,74 +81,115 @@ export default function SettingsPage() {
   const getStatusComponent = (status: MCPStatus) => {
     switch (status) {
       case "valid":
-        return <span className="text-green-600">✓ Valid & Saved</span>;
+        return (
+          <span className="flex items-center gap-1 text-green-400">
+            <CheckCircle className="h-4 w-4" />
+            Valid & Saved
+          </span>
+        );
       case "invalid":
-        return <span className="text-red-600">✗ Invalid</span>;
+        return (
+          <span className="flex items-center gap-1 text-red-400">
+            <XCircle className="h-4 w-4" />
+            Invalid
+          </span>
+        );
       case "validating":
-        return <span className="text-yellow-600">Validating...</span>;
+        return (
+          <span className="flex items-center gap-1 text-yellow-400">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Validating...
+          </span>
+        );
       default:
         return null;
     }
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="space-y-8">
-        <div>
-          <h2 className="mb-4 text-xl font-bold">MadKudu MCP Settings</h2>
-          <div className="space-y-4 rounded-lg border p-4">
+    <div className="min-h-screen">
+      <div className="container mx-auto px-6 py-8">
+        <div className="animate-fade-in mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-primary">
+              <Settings className="h-6 w-6 text-white" />
+            </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                MCP API Key
-              </label>
-              <input
-                type="password"
-                value={madkuduApiKey}
-                onChange={(e) => setMadkuduApiKey(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 p-2"
-                placeholder="Enter your MCP API key"
-              />
+              <h1 className="text-3xl font-bold">Settings</h1>
+              <p className="text-muted-foreground">Configure your API keys and connections</p>
             </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleValidateMcp}
-                disabled={!madkuduApiKey || validateMcpMutation.isPending}
-                className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
-              >
-                {validateMcpMutation.isPending ? "Validating..." : "Validate & Save"}
-              </button>
-              <div>{getStatusComponent(mcpStatus)}</div>
-            </div>
-            {mcpError && <div className="text-sm text-red-600">{mcpError}</div>}
+          </div>
+          <div className="glass-card p-4 rounded-lg flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <p className="text-sm text-muted-foreground">
+              API keys are validated against live services before being saved.
+            </p>
           </div>
         </div>
 
-        <div>
-          <h2 className="mb-4 text-xl font-bold">OpenAI Settings</h2>
-          <div className="space-y-4 rounded-lg border p-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                OpenAI API Key
-              </label>
-              <input
-                type="password"
-                value={openAIApiKeyInput}
-                onChange={(e) => setOpenAIApiKeyInput(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 p-2"
-                placeholder="Enter your OpenAI API key"
-              />
+        <div className="space-y-8 max-w-2xl">
+          <div className="glass-card p-6 rounded-xl animate-slide-up">
+            <div className="flex items-center gap-2 mb-4">
+              <Key className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-bold">MadKudu MCP Settings</h2>
             </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleValidateOpenai}
-                disabled={!openAIApiKeyInput || validateOpenaiMutation.isPending}
-                className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
-              >
-                {validateOpenaiMutation.isPending ? "Validating..." : "Validate & Save"}
-              </button>
-              <div>{getStatusComponent(openaiStatus)}</div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  MCP API Key
+                </label>
+                <input
+                  type="password"
+                  value={madkuduApiKey}
+                  onChange={(e) => setMadkuduApiKey(e.target.value)}
+                  className="input-field w-full"
+                  placeholder="Enter your MCP API key"
+                />
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleValidateMcp}
+                  disabled={!madkuduApiKey || validateMcpMutation.isPending}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {validateMcpMutation.isPending ? "Validating..." : "Validate & Save"}
+                </button>
+                <div>{getStatusComponent(mcpStatus)}</div>
+              </div>
+              {mcpError && <div className="text-sm text-red-400">{mcpError}</div>}
             </div>
-            {openaiError && <div className="text-sm text-red-600">{openaiError}</div>}
+          </div>
+
+          <div className="glass-card p-6 rounded-xl animate-slide-up" style={{ animationDelay: "100ms" }}>
+            <div className="flex items-center gap-2 mb-4">
+              <Key className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-bold">OpenAI Settings</h2>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  OpenAI API Key
+                </label>
+                <input
+                  type="password"
+                  value={openAIApiKeyInput}
+                  onChange={(e) => setOpenAIApiKeyInput(e.target.value)}
+                  className="input-field w-full"
+                  placeholder="Enter your OpenAI API key"
+                />
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleValidateOpenai}
+                  disabled={!openAIApiKeyInput || validateOpenaiMutation.isPending}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {validateOpenaiMutation.isPending ? "Validating..." : "Validate & Save"}
+                </button>
+                <div>{getStatusComponent(openaiStatus)}</div>
+              </div>
+              {openaiError && <div className="text-sm text-red-400">{openaiError}</div>}
+            </div>
           </div>
         </div>
       </div>

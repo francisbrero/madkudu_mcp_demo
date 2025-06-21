@@ -1,59 +1,106 @@
 "use client";
 
 import Link from "next/link";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Users, Sparkles, Bot } from "lucide-react";
 import { api } from "~/trpc/react";
 
 export default function AgentsPage() {
   const { data: agents, isLoading, error } = api.agent.list.useQuery();
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold">Agents</h1>
-        <Link href="/agents/new">
-          <button className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create New Agent
-          </button>
-        </Link>
-      </div>
-
-      {isLoading && <p>Loading agents...</p>}
-      {error && <p className="text-red-500">Error: {error.message}</p>}
-
-      {agents && agents.length === 0 && (
-        <div className="text-center py-12 border-2 border-dashed rounded-lg">
-          <h2 className="text-xl font-semibold">No Agents Found</h2>
-          <p className="text-muted-foreground mt-2">
-            Get started by creating your first specialized agent.
-          </p>
-          <Link href="/agents/new">
-            <button className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 mt-4">
-              Create Agent
-            </button>
-          </Link>
+    <div className="min-h-screen">
+      <div className="container mx-auto px-6 py-8">
+        <div className="animate-fade-in mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-green-500 to-green-600">
+                <Users className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Specialized Agents</h1>
+                <p className="text-muted-foreground">Create AI agents for specific business tasks</p>
+              </div>
+            </div>
+            <Link href="/agents/new" className="btn-primary inline-flex items-center gap-2">
+              <PlusCircle className="h-4 w-4" />
+              Create New Agent
+            </Link>
+          </div>
+          <div className="glass-card p-4 rounded-lg flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <p className="text-sm text-muted-foreground">
+              Each agent can be customized with specific prompts and tool access for focused automation.
+            </p>
+          </div>
         </div>
-      )}
 
-      {agents && agents.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {agents.map((agent) => (
-            <Link key={agent.id} href={`/agents/${agent.id}`} className="block">
-              <div className="rounded-lg border bg-card text-card-foreground shadow-sm h-full hover:shadow-md transition-transform transform hover:-translate-y-1">
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold tracking-tight">
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-pulse-glow">
+                <Bot className="h-12 w-12 text-primary mx-auto mb-4" />
+              </div>
+              <p className="text-muted-foreground">Loading agents...</p>
+            </div>
+          </div>
+        )}
+        
+        {error && (
+          <div className="glass-card p-6 rounded-xl border-red-500/20">
+            <p className="text-red-400">Error: {error.message}</p>
+          </div>
+        )}
+
+        {agents && agents.length === 0 && (
+          <div className="glass-card text-center py-12 rounded-xl animate-fade-in">
+            <Bot className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">No Agents Found</h2>
+            <p className="text-muted-foreground mb-6">
+              Get started by creating your first specialized agent.
+            </p>
+            <Link href="/agents/new" className="btn-secondary inline-flex items-center gap-2">
+              <PlusCircle className="h-4 w-4" />
+              Create Your First Agent
+            </Link>
+          </div>
+        )}
+
+        {agents && agents.length > 0 && (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {agents.map((agent, index) => (
+              <Link 
+                key={agent.id} 
+                href={`/agents/${agent.id}`} 
+                className="group animate-slide-up"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="agent-card h-full p-6 rounded-xl">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-2 rounded-lg bg-gradient-primary">
+                      <Bot className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      ID: {agent.id}
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
                     {agent.name}
                   </h3>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {agent.description}
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {agent.description || "No description provided"}
                   </p>
+                  <div className="mt-4 flex items-center text-primary text-sm">
+                    <span>Chat with agent</span>
+                    <svg className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 } 
