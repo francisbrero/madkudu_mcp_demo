@@ -2,23 +2,19 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+    provider = "sqlite"
+    url      = "file:./dev.db"
 }
 
 model Agent {
   id          String   @id @default(cuid())
   name        String
   description String
-  systemPrompt String @default("You are a helpful assistant.")
-  allowedApis String // Stored as JSON string
-  inputType   String @default("freeform") // email, domain, freeform
-  outputFormat String @default("markdown") // markdown, json
-  active      Boolean @default(true)
+  prompt      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-} 
+}
