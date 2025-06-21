@@ -22,7 +22,7 @@ export function Sidebar() {
           <Sparkles className="h-6 w-6 text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold gradient-text">MadKudu MCP</h1>
+          <h1 className="text-xl font-bold gradient-text">GTM MCP</h1>
           <p className="text-xs text-muted-foreground">Model Context Provider</p>
         </div>
       </div>

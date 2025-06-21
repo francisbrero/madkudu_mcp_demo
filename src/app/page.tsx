@@ -13,7 +13,7 @@ export default function HomePage() {
     {
       icon: MessageSquare,
       title: "AI Chat",
-      description: "Chat with AI that has access to MadKudu's business context",
+      description: "Chat with AI that has access to business context",
       href: "/chat",
       color: "from-purple-500 to-purple-600",
     },
@@ -35,10 +35,10 @@ export default function HomePage() {
             <span className="text-sm text-muted-foreground">Model Context Provider Demo</span>
           </div>
           <h1 className="text-6xl font-bold mb-6">
-            Welcome to <span className="gradient-text">MadKudu MCP</span>
+            Welcome to <span className="gradient-text">GTM MCP</span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Experience the power of AI enhanced with business context. Connect LLMs to MadKudu&apos;s 
+            Experience the power of AI enhanced with business context. Connect LLMs to GTM&apos;s 
             structured tools for intelligent automation and insights.
           </p>
         </div>
@@ -73,7 +73,7 @@ export default function HomePage() {
           <h2 className="text-2xl font-bold mb-4">Getting Started</h2>
           <div className="space-y-4 text-muted-foreground">
             <p>
-              To begin using the MadKudu MCP Demo, you&apos;ll need to configure your API keys in the 
+              To begin using the MCP Demo, you&apos;ll need to configure your API keys in the 
               <Link href="/settings" className="text-primary hover:underline ml-1">Settings</Link> page.
             </p>
             <div className="flex gap-4">

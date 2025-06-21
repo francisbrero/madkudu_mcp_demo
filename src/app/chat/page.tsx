@@ -12,7 +12,7 @@ export default function ChatPage() {
             </div>
             <div>
               <h1 className="text-3xl font-bold">AI Chat</h1>
-              <p className="text-muted-foreground">Chat with AI that has access to MadKudu tools</p>
+              <p className="text-muted-foreground">Chat with AI that has access to GTM data</p>
             </div>
           </div>
           <div className="glass-card p-4 rounded-lg flex items-center gap-2">
