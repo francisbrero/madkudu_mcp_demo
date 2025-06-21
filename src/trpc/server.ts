@@ -1,28 +1,31 @@
-import { createHydrationHelpers } from "@trpc/react-query/rsc";
-import { cache } from "react";
+import "server-only";
 
-import { createCaller, type AppRouter } from "~/server/api/root";
-import { createTRPCContext } from "~/server/api/trpc";
-import { createQueryClient } from "./query-client";
+import { createTRPCProxyClient, httpBatchLink, loggerLink } from "@trpc/client";
+import { headers } from "next/headers";
+import { type AppRouter } from "~/server/api/root";
+import { transformer } from "./shared";
 
-/**
- * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when
- * handling a tRPC call from a React Server Component.
- */
-const createContext = cache(async () => {
-  // Create a normal Headers object instead of using next/headers
-  const heads = new Headers();
-  heads.set("x-trpc-source", "rsc");
-
-  return createTRPCContext({
-    headers: heads,
-  });
+export const api = createTRPCProxyClient<AppRouter>({
+  transformer,
+  links: [
+    loggerLink({
+      enabled: (op) =>
+        process.env.NODE_ENV === "development" ||
+        (op.direction === "down" && op.result instanceof Error),
+    }),
+    httpBatchLink({
+      url: `${getBaseUrl()}/api/trpc`,
+      headers() {
+        const h = new Headers();
+        headers().forEach((value, key) => h.set(key, value));
+        return h;
+      },
+    }),
+  ],
 });
 
-const getQueryClient = cache(createQueryClient);
-const caller = createCaller(createContext);
-
-export const { trpc: api, HydrateClient } = createHydrationHelpers<AppRouter>(
-  caller,
-  getQueryClient,
-);
+function getBaseUrl() {
+  if (typeof window !== "undefined") return "";
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return `http://localhost:${process.env.PORT ?? 3000}`;
+}

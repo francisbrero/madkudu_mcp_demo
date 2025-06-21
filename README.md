@@ -1,73 +1,29 @@
-# MadKudu MCP Demo
-
-A demonstration of MadKudu's Model Context Protocol (MCP) capabilities, showcasing how enrichment data enhances AI agent performance.
-<img width="1511" alt="MadKudu_MCP_Demo" src="https://github.com/user-attachments/assets/71e7d1f7-29a4-499a-997e-6fb7e69adee1" />
-
-## Overview
-
-This demo provides a side-by-side comparison between standard GPT-4o responses and enhanced responses using MadKudu's context enrichment. It demonstrates how providing AI with rich company and contact data leads to more personalized, accurate, and effective outputs.
-
-## Features
-
-- **Side-by-side Comparison**: Compare standard GPT output with MadKudu-enhanced responses
-- **Multiple Agent Types**: Test different use cases like executive outreach, account planning, and QBR preparation
-- **Real-time Enrichment**: Visualize how MadKudu provides context during conversations
-- **Modern UI**: Clean, professional interface following MadKudu's design guidelines
-
-## Use Cases
-
-- **Executive Outreach Writer**: Generate personalized executive outreach messages based on company data
-- **Account Plan Generator**: Create tactical account plans for strategic sales targets with prioritized actions
-- **QBR Manager**: Prepare for Quarterly Business Reviews with usage analytics and growth opportunities
-
-## Technology Stack
+# Create T3 App
 
 This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
 
-- **Frontend**: React, Next.js, TailwindCSS
-- **API Integration**: tRPC for type-safe API calls
-- **AI Integration**: OpenAI API and MadKudu API
-- **Database**: Prisma ORM
+## What's next? How do I make an app with this?
 
-## Development
+We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
 
-### Prerequisites
+If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
 
-- Node.js 18+ and pnpm
-
-### Running Locally
-
-1. Clone this repository
-2. Install dependencies:
-   ```
-   pnpm install
-   ```
-3. Configure environment variables in `.env`
-4. Set up the database:
-   ```
-   pnpm db:push
-   ```
-5. Start the development server:
-   ```
-   pnpm dev
-   ```
-6. Open [http://localhost:3000](http://localhost:3000) in your browser
+- [Next.js](https://nextjs.org)
+- [NextAuth.js](https://next-auth.js.org)
+- [Prisma](https://prisma.io)
+- [Drizzle](https://orm.drizzle.team)
+- [Tailwind CSS](https://tailwindcss.com)
+- [tRPC](https://trpc.io)
 
 ## Learn More
 
 To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
 
 - [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available)
+- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
 
-## Contributing
+You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
 
-This project is a demonstration of MadKudu capabilities. For feature requests or bug reports, please contact the MadKudu team.
+## How do I deploy this?
 
-## Deployment
-
-Follow the deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
-
-## License
-
-See the [LICENSE](LICENSE) file for more information.
+Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.

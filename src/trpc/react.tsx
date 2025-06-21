@@ -1,7 +1,7 @@
 "use client";
 
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
-import { httpBatchStreamLink, loggerLink, splitLink, httpLink } from "@trpc/client";
+import { httpBatchStreamLink, loggerLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
 import { useState } from "react";
@@ -40,40 +40,27 @@ export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
 export function TRPCReactProvider(props: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
-  const baseUrl = getBaseUrl();
 
-  const [trpcClient] = useState(() => {
-    return api.createClient({
+  const [trpcClient] = useState(() =>
+    api.createClient({
       links: [
         loggerLink({
           enabled: (op) =>
             process.env.NODE_ENV === "development" ||
             (op.direction === "down" && op.result instanceof Error),
         }),
-        // Split links based on operation type
-        splitLink({
-          condition(op) {
-            return op.type === 'subscription';
+        httpBatchStreamLink({
+          transformer: SuperJSON,
+          url: getBaseUrl() + "/api/trpc",
+          headers: () => {
+            const headers = new Headers();
+            headers.set("x-trpc-source", "nextjs-react");
+            return headers;
           },
-          // Use regular http link for subscriptions (SSE)
-          true: httpLink({
-            url: baseUrl + "/api/trpc",
-            transformer: SuperJSON,
-          }),
-          // Use batch link for mutations and queries
-          false: httpBatchStreamLink({
-            transformer: SuperJSON,
-            url: baseUrl + "/api/trpc",
-            headers: () => {
-              const headers = new Headers();
-              headers.set("x-trpc-source", "nextjs-react");
-              return headers;
-            },
-          }),
         }),
       ],
-    });
-  });
+    }),
+  );
 
   return (
     <QueryClientProvider client={queryClient}>
