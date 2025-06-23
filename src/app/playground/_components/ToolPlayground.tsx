@@ -283,10 +283,10 @@ export function ToolPlayground() {
 
           <div>
             {summarizeJson.isPending && (
-              <div className="glass-card flex h-full items-center justify-center rounded-xl p-6 animate-pulse-glow">
-                <p className="text-sm font-medium text-primary">
+              <div className="glass-card rounded-xl p-6 animate-pulse-glow">
+                <div className="text-sm font-medium text-primary mt-0 mb-2">
                   AI is summarizing...
-                </p>
+                </div>
               </div>
             )}
 
