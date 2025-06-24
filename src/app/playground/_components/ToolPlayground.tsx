@@ -25,6 +25,19 @@ type Tool = {
   };
 };
 
+type ToolProperty = {
+  type: string;
+  description?: string;
+  example?: unknown;
+  default?: unknown;
+};
+
+type ReactChildrenElement = {
+  props?: {
+    children?: React.ReactNode;
+  };
+};
+
 /**
  * Generates a placeholder JSON object from a tool's input schema.
  */
@@ -35,7 +48,7 @@ function createParamsPlaceholder(tool: Tool | undefined): string {
 
   const placeholder: Record<string, unknown> = {};
   const properties = tool.inputSchema.properties;
-  const required = tool.inputSchema.required || [];
+  const required = tool.inputSchema.required ?? [];
 
   if (required.length > 0) {
     for (const key of required) {
@@ -77,6 +90,7 @@ function createParamsPlaceholder(tool: Tool | undefined): string {
   } else if (Object.keys(properties).length > 0) {
     // If no required params, use the first optional one as a placeholder
     const firstKey = Object.keys(properties)[0];
+    if (!firstKey) return '{}';
     const prop = properties[firstKey] as { type: string; default?: unknown; example?: unknown };
     if (prop.default !== undefined) {
       placeholder[firstKey] = prop.default;
@@ -274,8 +288,8 @@ export function ToolPlayground() {
               (() => {
                 const selectedTool = tools?.find((t) => t.name === selectedToolName) as Tool | undefined;
                 if (!selectedTool) return null;
-                const properties = selectedTool.inputSchema?.properties || {};
-                const required = selectedTool.inputSchema?.required || [];
+                const properties = selectedTool.inputSchema?.properties ?? {};
+                const required = selectedTool.inputSchema?.required ?? [];
                 const paramKeys = Object.keys(properties);
                 // If no required fields but multiple optional fields, show a note
                 const needsAtLeastOne = required.length === 0 && paramKeys.length > 1;
@@ -296,7 +310,7 @@ export function ToolPlayground() {
                         <strong>Parameters:</strong>
                         <ul className="list-disc ml-6 mt-1">
                           {Object.entries(selectedTool.inputSchema.properties).map(([key, value]) => {
-                            const prop = value as any;
+                            const prop = value as ToolProperty;
                             const isRequired = selectedTool.inputSchema?.required?.includes(key);
                             return (
                               <li key={key} className="mb-1">
@@ -311,10 +325,10 @@ export function ToolPlayground() {
                                 {prop.description && (
                                   <span className="text-xs text-gray-400 ml-2">- {prop.description}</span>
                                 )}
-                                {prop.example && (
+                                {prop.example !== undefined && (
                                   <span className="text-xs text-blue-400 ml-2">e.g. {JSON.stringify(prop.example)}</span>
                                 )}
-                                {prop.default && (
+                                {prop.default !== undefined && (
                                   <span className="text-xs text-blue-400 ml-2">default: {JSON.stringify(prop.default)}</span>
                                 )}
                               </li>
@@ -419,16 +433,19 @@ export function ToolPlayground() {
                     components={{
                       a: (props) => {
                         // Utility to flatten React children to string
-                        function flattenChildren(children) {
+                        function flattenChildren(children: React.ReactNode): string {
                           if (typeof children === 'string') return children;
                           if (Array.isArray(children)) return children.map(flattenChildren).join('');
-                          if (typeof children === 'object' && children && 'props' in children) return flattenChildren(children.props.children);
+                          if (typeof children === 'object' && children && 'props' in children) {
+                            const element = children as ReactChildrenElement;
+                            return flattenChildren(element.props?.children);
+                          }
                           return '';
                         }
                         const linkText = flattenChildren(props.children).trim();
-                        const href = props.href || '';
+                        const href = props.href ?? '';
                         // Normalize for comparison: strip protocol, trim, lowercase
-                        function normalizeUrl(url) {
+                        function normalizeUrl(url: string): string {
                           return url.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
                         }
                         const showHref = normalizeUrl(linkText) !== normalizeUrl(href);
