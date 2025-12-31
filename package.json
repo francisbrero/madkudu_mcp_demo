@@ -39,7 +39,7 @@
     "eventsource": "^2.0.2",
     "iron-session": "^8.0.4",
     "lucide-react": "^0.518.0",
-    "next": "^15.2.3",
+    "next": "15.2.8",
     "openai": "^4.104.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
